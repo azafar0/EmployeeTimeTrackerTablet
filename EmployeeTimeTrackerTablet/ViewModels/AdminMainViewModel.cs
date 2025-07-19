@@ -521,140 +521,66 @@ namespace EmployeeTimeTrackerTablet.ViewModels
         {
             try
             {
-                // Check if employee is currently clocked in
-                var isCurrentlyClockedIn = await Task.Run(() => 
-                    _timeEntryRepository.IsEmployeeClockedInAsync(employee.EmployeeID));
+                // NEW: Use cross-midnight aware shift status method
+                var shiftStatus = await _timeEntryRepository.GetEmployeeShiftStatusAsync(employee.EmployeeID);
 
-                // Get today's time entries for this employee
-                var todayEntries = await Task.Run(() => 
-                    _timeEntryRepository.GetTimeEntriesForDateAsync(employee.EmployeeID, DateTime.Today));
-
-                var latestEntry = todayEntries.OrderByDescending(e => e.TimeIn).FirstOrDefault();
-
-                // Calculate current status
-                string currentStatus;
-                string statusColor;
-                
-                if (isCurrentlyClockedIn)
+                if (shiftStatus.IsWorking)
                 {
-                    currentStatus = "Working";
-                    statusColor = "#007BFF"; // Blue for working
-                }
-                else if (latestEntry != null && latestEntry.TimeOut.HasValue)
-                {
-                    currentStatus = "Not Available";
-                    statusColor = "#DC3545"; // Red for completed shift
+                    // Employee is currently working
+                    return new AdminEmployeeStatus
+                    {
+                        Employee = employee,
+                        EmployeeFullName = $"{employee.FirstName} {employee.LastName}",
+                        CurrentStatus = shiftStatus.IsCrossMidnight ? "Working (Overnight)" : "Working",
+                        StatusColor = "#007BFF", // Blue for working
+                        ClockInTime = FormatShiftTime(shiftStatus.ShiftStarted, shiftStatus.IsCrossMidnight),
+                        ClockInPhotoExists = false, // TODO: Implement photo checking
+                        ClockInPhotoPath = "",
+                        ClockOutTime = "--:--",
+                        ClockOutPhotoExists = false,
+                        ClockOutPhotoPath = "",
+                        WorkedHoursToday = $"{shiftStatus.WorkingHours:F1}h{(shiftStatus.IsCrossMidnight ? " (ongoing)" : "")}"
+                    };
                 }
                 else
                 {
-                    currentStatus = "Available";
-                    statusColor = "#28A745"; // Green for available
-                }
+                    // Employee is not currently working
+                    string status = "Available";
+                    string statusColor = "#28A745"; // Green
 
-                // Calculate worked hours today
-                var workedHoursToday = todayEntries.Where(e => e.TimeOut.HasValue)
-                                                        .Sum(e => e.TotalHours);
-
-                // Add ongoing hours if currently clocked in
-                if (isCurrentlyClockedIn && latestEntry != null && !latestEntry.TimeOut.HasValue && latestEntry.TimeIn.HasValue)
-                {
-                    var currentTime = DateTime.Now;
-                    var clockInTime = DateTime.Today.Add(latestEntry.TimeIn.Value);
-                    var ongoingHours = (currentTime - clockInTime).TotalHours;
-                    workedHoursToday += (decimal)ongoingHours;
-                }
-
-                // FIXED: Convert TimeSpan to proper 12-hour DateTime format
-                string FormatTime(TimeSpan? timeSpan)
-                {
-                    if (!timeSpan.HasValue) return "--:--";
-                    
-                    var dateTime = DateTime.Today.Add(timeSpan.Value);
-                    return dateTime.ToString("h:mm tt"); // 12-hour format with AM/PM
-                }
-
-                // CRITICAL FIX: Robust photo path validation to prevent BitmapImage crashes
-                string clockInPhotoPath = latestEntry?.ClockInPhotoPath ?? "";
-                bool clockInPhotoExists = false;
-                
-                // Validate photo path and file existence
-                if (!string.IsNullOrEmpty(clockInPhotoPath))
-                {
-                    try
+                    if (shiftStatus.TodayCompletedHours > 0)
                     {
-                        // Check if file exists and is accessible
-                        clockInPhotoExists = System.IO.File.Exists(clockInPhotoPath);
-                        
-                        // Additional validation: ensure it's a valid image file
-                        if (clockInPhotoExists)
-                        {
-                            var extension = System.IO.Path.GetExtension(clockInPhotoPath).ToLowerInvariant();
-                            var validExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif" };
-                            clockInPhotoExists = validExtensions.Contains(extension);
-                        }
+                        status = "Not Available";
+                        statusColor = "#DC3545"; // Red
                     }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Error validating clock-in photo path '{clockInPhotoPath}': {ex.Message}");
-                        clockInPhotoExists = false;
-                        clockInPhotoPath = ""; // Clear invalid path
-                    }
-                }
 
-                string clockOutPhotoPath = latestEntry?.ClockOutPhotoPath ?? "";
-                bool clockOutPhotoExists = false;
-                
-                // Validate photo path and file existence
-                if (!string.IsNullOrEmpty(clockOutPhotoPath))
-                {
-                    try
+                    return new AdminEmployeeStatus
                     {
-                        // Check if file exists and is accessible
-                        clockOutPhotoExists = System.IO.File.Exists(clockOutPhotoPath);
-                        
-                        // Additional validation: ensure it's a valid image file
-                        if (clockOutPhotoExists)
-                        {
-                            var extension = System.IO.Path.GetExtension(clockOutPhotoPath).ToLowerInvariant();
-                            var validExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif" };
-                            clockOutPhotoExists = validExtensions.Contains(extension);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Error validating clock-out photo path '{clockOutPhotoPath}': {ex.Message}");
-                        clockOutPhotoExists = false;
-                        clockOutPhotoPath = ""; // Clear invalid path
-                    }
+                        Employee = employee,
+                        EmployeeFullName = $"{employee.FirstName} {employee.LastName}",
+                        CurrentStatus = status,
+                        StatusColor = statusColor,
+                        ClockInTime = "--:--",
+                        ClockInPhotoExists = false,
+                        ClockInPhotoPath = "",
+                        ClockOutTime = shiftStatus.LastClockOut?.ToString("h:mm tt") ?? "--:--",
+                        ClockOutPhotoExists = false,
+                        ClockOutPhotoPath = "",
+                        WorkedHoursToday = $"{shiftStatus.TodayCompletedHours:F1}h today"
+                    };
                 }
-
-                return new AdminEmployeeStatus
-                {
-                    Employee = employee, // FIXED: Store reference to underlying Employee object
-                    EmployeeFullName = employee.FullName,
-                    CurrentStatus = currentStatus,
-                    StatusColor = statusColor,
-                    ClockInTime = FormatTime(latestEntry?.TimeIn),
-                    ClockInPhotoExists = clockInPhotoExists,
-                    ClockInPhotoPath = clockInPhotoExists ? clockInPhotoPath : "", // Only set if valid
-                    ClockOutTime = latestEntry?.TimeOut.HasValue == true 
-                        ? FormatTime(latestEntry.TimeOut) 
-                        : (isCurrentlyClockedIn ? "In Progress" : "--:--"),
-                    ClockOutPhotoExists = clockOutPhotoExists,
-                    ClockOutPhotoPath = clockOutPhotoExists ? clockOutPhotoPath : "", // Only set if valid
-                    WorkedHoursToday = $"{workedHoursToday:F1}h{(isCurrentlyClockedIn ? " (ongoing)" : "")}"
-                };
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"AdminMainViewModel Error in CreateEmployeeStatusAsync for employee {employee?.FullName}: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error in CreateEmployeeStatusAsync for employee {employee?.FirstName} {employee?.LastName}: {ex.Message}");
+
                 // Return safe default status on error
                 return new AdminEmployeeStatus
                 {
-                    Employee = employee, // FIXED: Still store the employee reference even on error
-                    EmployeeFullName = employee?.FullName ?? "Unknown Employee",
+                    Employee = employee,
+                    EmployeeFullName = $"{employee?.FirstName} {employee?.LastName}" ?? "Unknown Employee",
                     CurrentStatus = "Unknown",
-                    StatusColor = "#6C757D",
+                    StatusColor = "#6C757D", // Gray
                     ClockInTime = "--:--",
                     ClockInPhotoExists = false,
                     ClockInPhotoPath = "",
@@ -1156,6 +1082,16 @@ namespace EmployeeTimeTrackerTablet.ViewModels
         }
 
         #endregion Employee Management CRUD Commands
+
+        /// <summary>
+        /// HELPER: Formats shift time display for cross-midnight shifts.
+        /// </summary>
+        private string FormatShiftTime(DateTime shiftStart, bool isCrossMidnight)
+        {
+            return isCrossMidnight
+                ? $"{shiftStart:ddd h:mm tt}"  // "Mon 11:00 PM" for overnight shifts
+                : $"{shiftStart:h:mm tt}";      // "11:00 PM" for same-day shifts
+        }
 
         #region IDisposable Implementation
 

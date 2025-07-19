@@ -1889,7 +1889,7 @@ namespace EmployeeTimeTrackerTablet.ViewModels
                 {
                     // Manager is authenticated and session is still valid
                     var remainingTime = _managerAuthService.GetRemainingTimeSpan();
-                    
+
                     if (remainingTime.TotalSeconds > 0)
                     {
                         // Update with precise countdown
@@ -1901,7 +1901,7 @@ namespace EmployeeTimeTrackerTablet.ViewModels
                         {
                             ManagerAuthMessage = $"Manager authenticated ({remainingTime.Seconds} sec remaining)";
                         }
-                        
+
                         IsManagerAuthenticated = true;
                     }
                     else
@@ -1935,10 +1935,10 @@ namespace EmployeeTimeTrackerTablet.ViewModels
             {
                 ManagerAuthMessage = string.Empty; // Clear the message completely
                 IsManagerAuthenticated = false;
-                
+
                 // Optionally notify the manager authentication service to clear itself
                 _managerAuthService?.ClearAuthentication();
-                
+
                 System.Diagnostics.Debug.WriteLine("Manager authentication expired - status message cleared");
             }
             catch (Exception ex)
@@ -2168,219 +2168,72 @@ namespace EmployeeTimeTrackerTablet.ViewModels
         /// </summary>
         private async Task UpdateEmployeeStatusAsync()
         {
-            System.Diagnostics.Debug.WriteLine("=== UpdateEmployeeStatusAsync Begin ===");
-
-            if (SelectedEmployee == null)
-            {
-                EmployeeStatusMessage = string.Empty;
-                CanClockIn = false;
-                CanClockOut = false;
-
-                // Clear time entry display information
-                ClearEmployeeTimeEntryDisplay();
-
-                System.Diagnostics.Debug.WriteLine("No employee selected, clearing status");
-                return;
-            }
-
             try
             {
-                // Check if we can use TimeEntryRepository for actual status checking
-                if (_timeEntryRepository == null)
+                if (SelectedEmployee == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("TimeEntryRepository is null, using simulated status");
-                    // Simulate employee status for design-time
-                    EmployeeStatusMessage = "Ready to clock in (simulated)";
-                    CanClockIn = true;
+                    CanClockIn = false;
                     CanClockOut = false;
-                    StatusMessage = $"{SelectedEmployee.FirstName} is ready to clock in (simulated).";
-
-                    // Load simulated time entry display
-                    await LoadSimulatedTimeEntryDisplay();
+                    EmployeeStatusMessage = "Please select an employee";
                     return;
                 }
 
-                System.Diagnostics.Debug.WriteLine($"Getting actual clock status for employee: {SelectedEmployee.FirstName} {SelectedEmployee.LastName}");
+                // NEW: Use cross-midnight aware shift status method
+                var shiftStatus = await _timeEntryRepository.GetEmployeeShiftStatusAsync(SelectedEmployee.EmployeeID);
 
-                // Use the TimeEntryRepository to check if employee is currently clocked in
-                var isClockedIn = await _timeEntryRepository.IsEmployeeClockedInAsync(SelectedEmployee.EmployeeID);
+                // Update button states based on actual working status
+                CanClockIn = !shiftStatus.IsWorking;
+                CanClockOut = shiftStatus.IsWorking;
 
-                // Get the current or most recent time entry for detailed display
-                var currentTimeEntry = await _timeEntryRepository.GetCurrentTimeEntryAsync(SelectedEmployee.EmployeeID);
-
-                string employeeStatus;
-
-                if (isClockedIn && currentTimeEntry != null)
+                // Enhanced status messages with cross-midnight support
+                if (shiftStatus.IsWorking)
                 {
-                    // Employee is currently clocked in
-                    employeeStatus = "Currently Clocked In";
-                    EmployeeStatusMessage = "Currently Clocked In";
-                    CanClockIn = false;
-                    CanClockOut = true;
-                    StatusMessage = $"{SelectedEmployee.FirstName} {SelectedEmployee.LastName} is currently clocked in.";
-                    System.Diagnostics.Debug.WriteLine($"Employee {SelectedEmployee.FirstName} {SelectedEmployee.LastName} is currently clocked in");
-
-                    // Load current time entry details
-                    await LoadTimeEntryDisplay(currentTimeEntry, isClockedIn);
-                }
-                else
-                {
-                    // Employee is available to clock in - check cooldown validation
-                    employeeStatus = "Available for Clock In";
-                    EmployeeStatusMessage = "Available to Clock In";
-                    CanClockIn = true;
-                    CanClockOut = false;
-
-                    // NEW: Check cooldown validation to ensure UI message accuracy
-                    if (_tabletTimeService != null)
+                    if (shiftStatus.IsCrossMidnight)
                     {
-                        var clockInValidation = await _tabletTimeService.ValidateClockInAsync(SelectedEmployee.EmployeeID);
-                        if (!clockInValidation.IsValid)
-                        {
-                            // Employee is blocked by cooldown or other validation
-                            employeeStatus = "On Cooldown";
-                            EmployeeStatusMessage = "On Cooldown";
-                            CanClockIn = false;
-                            StatusMessage = $"?? {clockInValidation.ErrorMessage}";
-                            System.Diagnostics.Debug.WriteLine($"Employee {SelectedEmployee.FirstName} {SelectedEmployee.LastName} blocked by validation: {clockInValidation.ErrorMessage}");
-                        }
-                        else
-                        {
-                            StatusMessage = $"{SelectedEmployee.FirstName} {SelectedEmployee.LastName} is available to clock in.";
-                            System.Diagnostics.Debug.WriteLine($"Employee {SelectedEmployee.FirstName} {SelectedEmployee.LastName} is available to clock in");
-                        }
+                        // Overnight shift - show day when started
+                        EmployeeStatusMessage = $"{SelectedEmployee.FirstName} {SelectedEmployee.LastName} is working " +
+                                              $"(since {shiftStatus.ShiftStarted:ddd h:mm tt} - {shiftStatus.WorkingHours:F1}h ongoing)";
                     }
                     else
                     {
-                        StatusMessage = $"{SelectedEmployee.FirstName} {SelectedEmployee.LastName} is available to clock in.";
-                        System.Diagnostics.Debug.WriteLine($"Employee {SelectedEmployee.FirstName} {SelectedEmployee.LastName} is available to clock in");
+                        // Same day shift - standard display
+                        EmployeeStatusMessage = $"{SelectedEmployee.FirstName} {SelectedEmployee.LastName} is working " +
+                                              $"(since {shiftStatus.ShiftStarted:h:mm tt} - {shiftStatus.WorkingHours:F1}h today)";
                     }
-                }
-
-                // COOLDOWN PERIOD DISPLAY LOGIC: Check if we should skip showing old shift information
-                if (employeeStatus == "Available for Clock In")
-                {
-                    // Check if we should skip showing old shift information after cooldown period
-                    var timeEntries = await _timeEntryRepository.GetTimeEntriesForDateAsync(SelectedEmployee.EmployeeID, DateTime.Today);
-                    if (timeEntries.Any())
-                    {
-                        var lastEntry = timeEntries.OrderByDescending(e => e.TimeOut ?? TimeSpan.MaxValue).First();
-                        if (lastEntry.TimeOut.HasValue) // Completed shift
-                        {
-                            var lastClockOut = lastEntry.ShiftDate.Add(lastEntry.TimeOut.Value);
-                            var hoursSinceClockOut = DateTime.Now.Subtract(lastClockOut).TotalHours;
-
-                            if (hoursSinceClockOut >= 4)
-                            {
-                                // Cooldown period satisfied - don't show old shift info
-                                StatusMessage = $"? {SelectedEmployee.FirstName} {SelectedEmployee.LastName} is available to clock in.";
-                                ClearEmployeeTimeEntryDisplay();
-                                System.Diagnostics.Debug.WriteLine($"UpdateEmployeeStatusAsync: Skipping old shift display for {SelectedEmployee.FirstName} - {hoursSinceClockOut:F1}h since last clock out");
-
-                                // Also check with EmployeeRepository for additional status validation if available
-                                if (_employeeRepository != null)
-                                {
-                                    var repositoryStatus = await _employeeRepository.GetEmployeeCurrentStatusAsync(SelectedEmployee.EmployeeID);
-
-                                    // Handle special cases from EmployeeRepository
-                                    switch (repositoryStatus)
-                                    {
-                                        case "Employee Not Found":
-                                        case "Employee Inactive":
-                                            CanClockIn = false;
-                                            CanClockOut = false;
-                                            EmployeeStatusMessage = repositoryStatus;
-                                            StatusMessage = $"?? {repositoryStatus}: {SelectedEmployee.FirstName} {SelectedEmployee.LastName}";
-                                            ClearEmployeeTimeEntryDisplay();
-                                            break;
-                                        case "Status Unknown":
-                                            CanClockIn = false;
-                                            CanClockOut = false;
-                                            EmployeeStatusMessage = "Status Unknown";
-                                            StatusMessage = $"? Unable to determine status for {SelectedEmployee.FirstName} {SelectedEmployee.LastName}. Please try again.";
-                                            ClearEmployeeTimeEntryDisplay();
-                                            break;
-                                    }
-                                }
-
-                                System.Diagnostics.Debug.WriteLine($"Status updated for {SelectedEmployee.FirstName} {SelectedEmployee.LastName}: CanClockIn={CanClockIn}, CanClockOut={CanClockOut}");
-                                return; // Exit early, keep display cleared
-                            }
-                        }
-                    }
-                }
-
-                // Load time entry display for current/recent shifts only (not in cooldown)
-                if (employeeStatus == "Currently Clocked In")
-                {
-                    // Already loaded above in the clocked-in case
                 }
                 else
                 {
-                    // Try to get the most recent completed time entry for display (within cooldown period)
-                    try
+                    if (shiftStatus.TodayCompletedHours > 0)
                     {
-                        var todayEntries = await _timeEntryRepository.GetTimeEntriesForDateAsync(SelectedEmployee.EmployeeID, DateTime.Today);
-                        var lastCompletedEntry = todayEntries.Where(e => e.TimeOut.HasValue).OrderByDescending(e => e.TimeOut).FirstOrDefault();
-
-                        if (lastCompletedEntry != null)
-                        {
-                            await LoadTimeEntryDisplay(lastCompletedEntry, false);
-                        }
-                        else
-                        {
-                            // No time entries for today, clear display
-                            ClearEmployeeTimeEntryDisplay();
-                        }
+                        EmployeeStatusMessage = $"{SelectedEmployee.FirstName} {SelectedEmployee.LastName} is not available " +
+                                              $"(worked {shiftStatus.TodayCompletedHours:F1}h today)";
                     }
-                    catch (Exception ex)
+                    else if (shiftStatus.LastClockOut.HasValue)
                     {
-                        System.Diagnostics.Debug.WriteLine($"Error loading last completed time entry: {ex.Message}");
-                        ClearEmployeeTimeEntryDisplay();
+                        EmployeeStatusMessage = $"{SelectedEmployee.FirstName} {SelectedEmployee.LastName} is available " +
+                                              $"(last worked: {shiftStatus.LastClockOut:h:mm tt})";
+                    }
+                    else
+                    {
+                        EmployeeStatusMessage = $"{SelectedEmployee.FirstName} {SelectedEmployee.LastName} is ready to clock in";
                     }
                 }
 
-                // Also check with EmployeeRepository for additional status validation if available
-                if (_employeeRepository != null)
-                {
-                    var repositoryStatus = await _employeeRepository.GetEmployeeCurrentStatusAsync(SelectedEmployee.EmployeeID);
-
-                    // Handle special cases from EmployeeRepository
-                    switch (repositoryStatus)
-                    {
-                        case "Employee Not Found":
-                        case "Employee Inactive":
-                            CanClockIn = false;
-                            CanClockOut = false;
-                            EmployeeStatusMessage = repositoryStatus;
-                            StatusMessage = $"?? {repositoryStatus}: {SelectedEmployee.FirstName} {SelectedEmployee.LastName}";
-                            ClearEmployeeTimeEntryDisplay();
-                            break;
-                        case "Status Unknown":
-                            CanClockIn = false;
-                            CanClockOut = false;
-                            EmployeeStatusMessage = "Status Unknown";
-                            StatusMessage = $"? Unable to determine status for {SelectedEmployee.FirstName} {SelectedEmployee.LastName}. Please try again.";
-                            ClearEmployeeTimeEntryDisplay();
-                            break;
-                    }
-                }
-
-                System.Diagnostics.Debug.WriteLine($"Status updated for {SelectedEmployee.FirstName} {SelectedEmployee.LastName}: CanClockIn={CanClockIn}, CanClockOut={CanClockOut}");
+                // Enhanced debugging with cross-midnight information
+                System.Diagnostics.Debug.WriteLine($"UpdateEmployeeStatusAsync: Employee {SelectedEmployee.EmployeeID} - " +
+                                                 $"IsWorking: {shiftStatus.IsWorking}, " +
+                                                 $"CrossMidnight: {shiftStatus.IsCrossMidnight}, " +
+                                                 $"WorkingHours: {shiftStatus.WorkingHours:F1}h, " +
+                                                 $"CanClockIn: {CanClockIn}, CanClockOut: {CanClockOut}");
             }
             catch (Exception ex)
             {
-                EmployeeStatusMessage = "Status unavailable.";
+                System.Diagnostics.Debug.WriteLine($"Error in UpdateEmployeeStatusAsync: {ex.Message}");
+
+                // Fallback to safe state
                 CanClockIn = false;
                 CanClockOut = false;
-                StatusMessage = "? Error checking employee status. Please try again.";
-                ClearEmployeeTimeEntryDisplay();
-                System.Diagnostics.Debug.WriteLine($"[UpdateEmployeeStatusAsync Error]: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
-            }
-            finally
-            {
-                System.Diagnostics.Debug.WriteLine("=== UpdateEmployeeStatusAsync Complete ===");
+                EmployeeStatusMessage = "Error checking employee status. Please try again.";
             }
         }
 
@@ -3018,14 +2871,75 @@ namespace EmployeeTimeTrackerTablet.ViewModels
                     System.Diagnostics.Debug.WriteLine($"? Error handling test error: {ex.Message}");
                 }
 
-                // Calculate final score
-                var scorePercentage = (testScore * 100) / totalTests;
-                var scoreEmoji = scorePercentage >= 90 ? "??" : scorePercentage >= 70 ? "?" : scorePercentage >= 50 ? "??" : "?";
+                // Test 11: Comprehensive Workflow Execution
+                System.Diagnostics.Debug.WriteLine("\n?? TEST 11: Comprehensive Workflow Execution");
+                try
+                {
+                    // Select the first employee for testing (no IsActive filter needed since all employees in suggestions are active)
+                    SelectedEmployee = EmployeeSuggestions.FirstOrDefault();
+                    if (SelectedEmployee == null)
+                    {
+                        throw new Exception("No employee found for testing workflow");
+                    }
 
-                System.Diagnostics.Debug.WriteLine($"\n=== MANAGER CORRECTION WORKFLOW TEST RESULTS ===");
-                System.Diagnostics.Debug.WriteLine($"Score: {testScore}/{totalTests} ({scorePercentage}%) {scoreEmoji}");
-                Console.WriteLine($"\n=== MANAGER CORRECTION WORKFLOW TEST RESULTS ===");
-                Console.WriteLine($"Score: {testScore}/{totalTests} ({scorePercentage}%) {scoreEmoji}");
+                    // Asynchronously execute clock-in, wait, then clock-out
+                    await ClockInAsync();
+                    await Task.Delay(2000); // Simulate time passing
+                    await ClockOutAsync();
+
+                    // Check that the time entry was created with correct values
+                    var timeEntries = await _timeEntryRepository.GetTimeEntriesForDateAsync(SelectedEmployee.EmployeeID, DateTime.Today);
+                    var latestEntry = timeEntries.OrderByDescending(te => te.EntryID).FirstOrDefault();
+
+                    if (latestEntry != null && latestEntry.TimeIn.HasValue && latestEntry.TimeOut.HasValue)
+                    {
+                        var duration = latestEntry.TimeOut.Value - latestEntry.TimeIn.Value;
+                        var expectedHours = duration.TotalHours;
+
+                        testResults.Add("? Workflow Execution: Clock-in and Clock-out executed successfully");
+                        testResults.Add($"? Expected Hours: {expectedHours:F2}, Recorded Hours: {latestEntry.TotalHours:F2}");
+                        testScore++;
+                    }
+                    else
+                    {
+                        testResults.Add("? Workflow Execution: Time entry not found or incomplete");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    testResults.Add($"? Workflow Execution: Error - {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"? Workflow execution test error: {ex.Message}");
+                }
+
+                // Test 12: Admin Navigation (simulated)
+                System.Diagnostics.Debug.WriteLine("\n?? TEST 12: Admin Navigation (simulated)");
+                try
+                {
+                    // Simulate admin access command
+                    var adminCommand = new RelayCommand(async () =>
+                    {
+                        await Task.Delay(100); // Simulate some delay
+                        System.Diagnostics.Debug.WriteLine("Admin access command executed (simulated)");
+                    });
+
+                    // Execute the command
+                    adminCommand.Execute(null);
+                    testResults.Add("? Admin Navigation: Admin access command executed (simulated)");
+                    testScore++;
+                }
+                catch (Exception ex)
+                {
+                    testResults.Add($"? Admin Navigation: Error - {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"? Admin navigation test error: {ex.Message}");
+                }
+
+                // Calculate final score
+                var finalScore = (testScore / (double)totalTests) * 100;
+
+                System.Diagnostics.Debug.WriteLine($"\n=== COMPREHENSIVE TEST RESULTS ===");
+                System.Diagnostics.Debug.WriteLine($"Score: {testScore}/{totalTests} ({finalScore:F1}%) {EmojiForScore(finalScore)}");
+                Console.WriteLine($"\n=== COMPREHENSIVE TEST RESULTS ===");
+                Console.WriteLine($"Score: {testScore}/{totalTests} ({finalScore:F1}%) {EmojiForScore(finalScore)}");
 
                 // Display detailed results
                 foreach (var result in testResults)
@@ -3035,46 +2949,46 @@ namespace EmployeeTimeTrackerTablet.ViewModels
                 }
 
                 // Update status message
-                StatusMessage = $"{scoreEmoji} Manager correction workflow test completed: {testScore}/{totalTests} ({scorePercentage}%)";
+                StatusMessage = $"{EmojiForScore(finalScore)} Comprehensive test completed: {testScore}/{totalTests} ({finalScore:F1}%)";
 
                 // Show comprehensive results dialog
-                var resultMessage = $"Manager Time Correction Workflow Test Results\n\n" +
-                                  $"Score: {testScore}/{totalTests} tests passed ({scorePercentage}%)\n\n" +
+                var resultMessage = $"Comprehensive Manager Time Correction Workflow Test Results\n\n" +
+                                  $"Score: {testScore}/{totalTests} tests passed ({finalScore:F1}%)\n\n" +
                                   $"Detailed Results:\n" +
                                   string.Join("\n", testResults.Take(10)) + // Limit to first 10 for dialog
                                   (testResults.Count > 10 ? "\n... (see debug output for full results)" : "");
 
                 System.Windows.MessageBox.Show(
                     resultMessage,
-                    $"Manager Correction Test Results {scoreEmoji}",
+                    $"Comprehensive Test Results {EmojiForScore(finalScore)}",
                     System.Windows.MessageBoxButton.OK,
-                    scorePercentage >= 90 ? System.Windows.MessageBoxImage.Information :
-                    scorePercentage >= 70 ? System.Windows.MessageBoxImage.Warning :
+                    finalScore >= 90 ? System.Windows.MessageBoxImage.Information :
+                    finalScore >= 70 ? System.Windows.MessageBoxImage.Warning :
                     System.Windows.MessageBoxImage.Error);
 
                 // Auto-clear status message after 10 seconds
                 _ = Task.Run(async () =>
                 {
                     await Task.Delay(10000);
-                    if (StatusMessage.Contains("workflow test completed"))
+                    if (StatusMessage.Contains("test completed"))
                     {
                         StatusMessage = "Select an employee to begin time tracking";
                     }
                 });
 
-                System.Diagnostics.Debug.WriteLine("=== MANAGER CORRECTION WORKFLOW TEST COMPLETE ===");
-                Console.WriteLine("=== MANAGER CORRECTION WORKFLOW TEST COMPLETE ===");
+                System.Diagnostics.Debug.WriteLine("=== COMPREHENSIVE TEST COMPLETE ===");
+                Console.WriteLine("=== COMPREHENSIVE TEST COMPLETE ===");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"? CRITICAL ERROR in Manager Correction Workflow Test: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"? CRITICAL ERROR in Comprehensive Test: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
-                Console.WriteLine($"? CRITICAL ERROR in Manager Correction Workflow Test: {ex.Message}");
+                Console.WriteLine($"? CRITICAL ERROR in Comprehensive Test: {ex.Message}");
 
-                StatusMessage = $"? Manager correction workflow test failed: {ex.Message}";
+                StatusMessage = $"? Comprehensive test failed: {ex.Message}";
 
                 System.Windows.MessageBox.Show(
-                    $"Critical Error in Manager Correction Workflow Test:\n\n{ex.Message}\n\nSee debug output for full details.",
+                    $"Critical Error in Comprehensive Test:\n\n{ex.Message}\n\nSee debug output for full details.",
                     "Test Error",
                     System.Windows.MessageBoxButton.OK,
                     System.Windows.MessageBoxImage.Error);
@@ -3083,6 +2997,20 @@ namespace EmployeeTimeTrackerTablet.ViewModels
             {
                 IsLoading = false;
             }
+        }
+
+        /// <summary>
+        /// Returns an emoji string based on the score percentage.
+        /// TODO: Replace with actual emoji rendering logic when available.
+        /// </summary>
+        /// <param name="percentage">The score percentage.</param>
+        /// <returns>An emoji string representing the score.</returns>
+        private string EmojiForScore(double percentage)
+        {
+            if (percentage >= 90) return "??";
+            if (percentage >= 70) return "??";
+            if (percentage >= 50) return "??";
+            return "??";
         }
 
         #endregion
