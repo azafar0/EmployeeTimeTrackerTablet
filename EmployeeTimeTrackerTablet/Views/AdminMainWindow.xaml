@@ -1,0 +1,947 @@
+<Window x:Class="EmployeeTimeTrackerTablet.Views.AdminMainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:EmployeeTimeTrackerTablet.Converters"
+        mc:Ignorable="d"
+        Title="Admin Panel - Employee Time Tracker"
+        WindowState="Maximized"
+        WindowStyle="SingleBorderWindow"
+        Background="#F8F9FA"
+        FontFamily="Segoe UI"
+        FontSize="14"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType">
+
+    <Window.Resources>
+        <!-- Converters -->
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <local:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
+        <local:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+        <local:EmptyStringToNullConverter x:Key="EmptyStringToNullConverter"/>
+        <local:SafeImageSourceConverter x:Key="SafeImageSourceConverter"/>
+        
+        <!-- Icon Style -->
+        <Style x:Key="IconStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI Symbol"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,5,0"/>
+        </Style>
+        
+        <!-- Button Styles -->
+        <Style x:Key="AdminButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#0078D4"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style x:Key="QuickActionButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#28A745"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style x:Key="NavigationButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#6C757D"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        </Style>
+
+        <!-- Status Card Style -->
+        <Style x:Key="StatusCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="BorderBrush" Value="#DEE2E6"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#40000000" BlurRadius="2" ShadowDepth="1" Direction="315"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Professional DataGrid Style -->
+        <Style x:Key="AdminDataGridStyle" TargetType="DataGrid">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#DEE2E6"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="GridLinesVisibility" Value="None"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="Transparent"/>
+            <Setter Property="VerticalGridLinesBrush" Value="Transparent"/>
+            <Setter Property="RowBackground" Value="White"/>
+            <Setter Property="AlternatingRowBackground" Value="#F8F9FA"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="CanUserDeleteRows" Value="False"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="SelectionMode" Value="Single"/>
+            <Setter Property="SelectionUnit" Value="FullRow"/>
+            <Setter Property="RowHeight" Value="65"/>
+            <Setter Property="ColumnHeaderHeight" Value="50"/>
+            <Setter Property="RowHeaderWidth" Value="0"/>
+            <!-- Remove default selection highlighting that interferes with custom content -->
+            <Setter Property="CanUserResizeRows" Value="False"/>
+            <Setter Property="CanUserReorderColumns" Value="False"/>
+            <Setter Property="CanUserResizeColumns" Value="True"/>
+        </Style>
+
+        <!-- FIXED: Professional Row Style - Prevents selection highlighting from hiding content -->
+        <Style x:Key="AdminDataGridRowStyle" TargetType="DataGridRow">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Height" Value="65"/>
+            <Style.Triggers>
+                <!-- Subtle hover effect that doesn't interfere with content -->
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F0F8FF"/>
+                </Trigger>
+                <!-- Subtle selection effect that doesn't hide content -->
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#E6F3FF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- FIXED: Professional Cell Style - Prevents cell selection from interfering -->
+        <Style x:Key="AdminDataGridCellStyle" TargetType="DataGridCell">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="Black"/>
+            <Style.Triggers>
+                <!-- Ensure text remains visible on selection -->
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="Black"/>
+                </Trigger>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="Black"/>
+                </Trigger>
+                <!-- Keep content visible on mouse over -->
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=DataGridRow}, Path=IsMouseOver}" Value="True">
+                    <Setter Property="Foreground" Value="Black"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=DataGridRow}, Path=IsSelected}" Value="True">
+                    <Setter Property="Foreground" Value="Black"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <!-- Main Window Grid: Header, Content, Footer -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="80"/>  <!-- Header -->
+            <RowDefinition Height="*"/>   <!-- Main Content -->
+            <RowDefinition Height="50"/>  <!-- Footer -->
+        </Grid.RowDefinitions>
+
+        <!-- HEADER SECTION -->
+        <Border Grid.Row="0" Background="#343A40">
+            <Grid Margin="20,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left: Title and Status -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="&#xE8F3;" FontFamily="Segoe UI Symbol" FontSize="24" Foreground="#007BFF" Margin="0,0,10,0"/>
+                    <TextBlock Text="Admin Panel" FontSize="24" FontWeight="Bold" Foreground="White"/>
+                    <Border Background="#28A745" CornerRadius="3" Margin="15,0,0,0" Padding="8,2">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE73E;" FontFamily="Segoe UI Symbol" FontSize="12" Margin="0,0,5,0"/>
+                            <TextBlock Text="System Online" FontSize="12" Foreground="White" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Center: Live Clock -->
+                <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20,0">
+                    <TextBlock Text="{Binding CurrentDate}" FontSize="14" Foreground="White" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding CurrentTime}" FontSize="18" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Right: Action Buttons -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource QuickActionButtonStyle}" 
+                            Command="{Binding RefreshDataCommand}"
+                            Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE72C;" Style="{StaticResource IconStyle}"/>
+                            <TextBlock Text="Refresh" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource AdminButtonStyle}" 
+                            Command="{Binding BackToMainCommand}"
+                            Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE72B;" Style="{StaticResource IconStyle}"/>
+                            <TextBlock Text="Back to Main" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource QuickActionButtonStyle}"
+                            Command="{Binding LogoutCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE7E8;" Style="{StaticResource IconStyle}"/>
+                            <TextBlock Text="Logout" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- MAIN CONTENT AREA -->
+        <Grid Grid.Row="1" Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="250"/>  <!-- Left Sidebar -->
+                <ColumnDefinition Width="*"/>    <!-- Main Content -->
+                <ColumnDefinition Width="280"/>  <!-- Right Sidebar -->
+            </Grid.ColumnDefinitions>
+
+            <!-- LEFT SIDEBAR: Navigation & Stats -->
+            <Border Grid.Column="0" 
+                    Background="#E9ECEF" 
+                    CornerRadius="8" 
+                    Margin="0,0,10,0" 
+                    Padding="15">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        
+                        <!-- Summary Stats -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="&#xE8A5;" Style="{StaticResource IconStyle}" FontWeight="Bold"/>
+                            <TextBlock Text="Summary" FontSize="16" FontWeight="Bold" Foreground="#212529" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        
+                        <!-- Stats Cards -->
+                        <Border Style="{StaticResource StatusCardStyle}" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="Active Employees" FontSize="12" Foreground="Gray"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE716;" Style="{StaticResource IconStyle}" FontSize="14"/>
+                                    <TextBlock Text="{Binding ClockedInCount}" FontSize="18" FontWeight="Bold" Foreground="#28A745"/>
+                                    <TextBlock Text=" clocked in" FontSize="12" Margin="5,0,0,0"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource StatusCardStyle}" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="Today's Entries" FontSize="12" Foreground="Gray"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE823;" Style="{StaticResource IconStyle}" FontSize="14"/>
+                                    <TextBlock Text="{Binding TodayEntries}" FontSize="18" FontWeight="Bold" Foreground="#007BFF"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource StatusCardStyle}" Margin="0,0,0,15">
+                            <StackPanel>
+                                <TextBlock Text="Total Hours Today" FontSize="12" Foreground="Gray"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE825;" Style="{StaticResource IconStyle}" FontSize="14"/>
+                                    <TextBlock Text="{Binding TotalHoursToday}" FontSize="18" FontWeight="Bold" Foreground="#17A2B8"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Navigation Menu -->
+                        <StackPanel Orientation="Horizontal" Margin="0,10,0,10">
+                            <TextBlock Text="&#xE8F1;" Style="{StaticResource IconStyle}" FontWeight="Bold"/>
+                            <TextBlock Text="Navigation" FontSize="16" FontWeight="Bold" Foreground="#212529" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        
+                        <Button Command="{Binding DashboardCommand}"
+                                Style="{StaticResource NavigationButtonStyle}" 
+                                Margin="0,0,0,5">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE7F4;" Style="{StaticResource IconStyle}"/>
+                                <TextBlock Text="Dashboard" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding EmployeeManagementCommand}"
+                                Style="{StaticResource NavigationButtonStyle}" 
+                                Margin="0,0,0,5">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE716;" Style="{StaticResource IconStyle}"/>
+                                <TextBlock Text="Employee Management" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding TimeReportsCommand}"
+                                Style="{StaticResource NavigationButtonStyle}" 
+                                Margin="0,0,0,15">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE8A5;" Style="{StaticResource IconStyle}"/>
+                                <TextBlock Text="Time Reports" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- MAIN CONTENT: Employee Status Table -->
+            <Border Grid.Column="1" 
+                    Background="White" 
+                    CornerRadius="8" 
+                    Margin="0,0,10,0" 
+                    Padding="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- REFACTORED: Professional Header Row with Clean Layout -->
+                    <DockPanel Grid.Row="0" Margin="0,0,0,12" LastChildFill="True">
+                        <!-- Left Side: Employee Management Section -->
+                        <StackPanel DockPanel.Dock="Left" Orientation="Vertical" VerticalAlignment="Center">
+                            <!-- Employee Management Heading (Single Line) -->
+                            <TextBlock Text="Employee Management" 
+                                       FontSize="16" 
+                                       FontWeight="Bold" 
+                                       Foreground="#495057" 
+                                       TextWrapping="NoWrap"
+                                       Margin="0,0,0,8"/>
+                            
+                            <!-- Action Buttons (Tightly Integrated) -->
+                            <StackPanel Orientation="Horizontal">
+                                <!-- Add Employee Button -->
+                                <Button Command="{Binding AddEmployeeCommand}"
+                                        Background="#28A745"
+                                        Foreground="White"
+                                        Height="36"
+                                        MinWidth="85"
+                                        Margin="0,0,4,0"
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        BorderThickness="0"
+                                        Cursor="Hand"
+                                        ToolTip="Add a new employee">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE710;" FontFamily="Segoe UI Symbol" FontSize="12" Margin="0,0,4,0"/>
+                                        <TextBlock Text="Add"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- Edit Employee Button -->
+                                <Button Command="{Binding EditEmployeeCommand}"
+                                        CommandParameter="{Binding SelectedEmployeeStatus}"
+                                        Height="36"
+                                        MinWidth="85"
+                                        Margin="0,0,4,0"
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        BorderThickness="0"
+                                        Cursor="Hand"
+                                        ToolTip="Select an employee from the list to edit"
+                                        ToolTipService.ShowOnDisabled="True">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="#007BFF"/>
+                                            <Setter Property="Foreground" Value="White"/>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter Property="Background" Value="#DDEEFF"/>
+                                                    <Setter Property="Foreground" Value="#8DAEE9"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE70F;" FontFamily="Segoe UI Symbol" FontSize="12" Margin="0,0,4,0"/>
+                                        <TextBlock Text="Edit"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- Delete Employee Button -->
+                                <Button Command="{Binding DeleteEmployeeCommand}"
+                                        CommandParameter="{Binding SelectedEmployeeStatus}"
+                                        Height="36"
+                                        MinWidth="85"
+                                        Margin="0,0,8,0"
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        BorderThickness="0"
+                                        Cursor="Hand"
+                                        ToolTip="Select an employee from the list to delete"
+                                        ToolTipService.ShowOnDisabled="True">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="#DC3545"/>
+                                            <Setter Property="Foreground" Value="White"/>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter Property="Background" Value="#FFE0E3"/>
+                                                    <Setter Property="Foreground" Value="#E08080"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE74D;" FontFamily="Segoe UI Symbol" FontSize="12" Margin="0,0,4,0"/>
+                                        <TextBlock Text="Delete"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- Dual Time Correction Button (Manager Function) -->
+                                <Button Command="{Binding OpenDualTimeCorrectionCommand}"
+                                        CommandParameter="{Binding SelectedEmployeeStatus}"
+                                        Height="36"
+                                        MinWidth="120"
+                                        Margin="0,0,0,0"
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        BorderThickness="0"
+                                        Cursor="Hand"
+                                        ToolTip="Select an employee from the list to correct clock-in and clock-out times (Manager function)"
+                                        ToolTipService.ShowOnDisabled="True">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="#FF6B35"/>
+                                            <Setter Property="Foreground" Value="White"/>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter Property="Background" Value="#FFE0CC"/>
+                                                    <Setter Property="Foreground" Value="#B8824D"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE823;" FontFamily="Segoe UI Symbol" FontSize="12" Margin="0,0,4,0"/>
+                                        <TextBlock Text="Time Correction"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Right Side: Active Employees Header -->
+                        <StackPanel DockPanel.Dock="Right" 
+                                    Orientation="Horizontal" 
+                                    HorizontalAlignment="Right" 
+                                    VerticalAlignment="Center">
+                            <TextBlock Text="&#xE716;" Style="{StaticResource IconStyle}" FontSize="18" FontWeight="Bold"/>
+                            <TextBlock Text="Active Employees" 
+                                       FontSize="18" 
+                                       FontWeight="Bold" 
+                                       Foreground="#212529" 
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding ActiveEmployeesStatus.Count, StringFormat='({0} total)'}" 
+                                       FontSize="13" 
+                                       Foreground="Gray" 
+                                       VerticalAlignment="Center"
+                                       Margin="8,0,0,0"/>
+                        </StackPanel>
+                    </DockPanel>
+
+                    <DataGrid Grid.Row="1" 
+                              x:Name="EmployeeDataGrid"
+                              ItemsSource="{Binding ActiveEmployeesStatus}"
+                              SelectedItem="{Binding SelectedEmployeeStatus}"
+                              Style="{StaticResource AdminDataGridStyle}"
+                              RowStyle="{StaticResource AdminDataGridRowStyle}"
+                              CellStyle="{StaticResource AdminDataGridCellStyle}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserSortColumns="True"
+                              GridLinesVisibility="None"
+                              HorizontalGridLinesBrush="Transparent"
+                              VerticalGridLinesBrush="Transparent"
+                              HeadersVisibility="Column"
+                              RowHeaderWidth="0"
+                              SelectionMode="Single"
+                              SelectionUnit="FullRow">
+                        
+                        <!-- Remove default selection brushes that interfere with content -->
+                        <DataGrid.Resources>
+                            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="Transparent"/>
+                            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="Black"/>
+                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="Transparent"/>
+                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="Black"/>
+                        </DataGrid.Resources>
+
+                        <DataGrid.Columns>
+                            <!-- Employee Column -->
+                            <DataGridTemplateColumn Header="Employee" Width="180" CanUserSort="True" SortMemberPath="EmployeeFullName">
+                                <DataGridTemplateColumn.HeaderTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE716;" Style="{StaticResource IconStyle}" FontSize="12"/>
+                                            <TextBlock Text="Employee" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.HeaderTemplate>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel VerticalAlignment="Center" Margin="8,4">
+                                            <TextBlock Text="{Binding EmployeeFullName}" 
+                                                       FontWeight="SemiBold"
+                                                       FontSize="13"
+                                                       FontFamily="Segoe UI"
+                                                       Margin="0,0,0,2"/>
+                                            <TextBlock Text="{Binding CurrentStatus}" 
+                                                       FontSize="11" 
+                                                       FontWeight="Normal"
+                                                       FontFamily="Segoe UI"
+                                                       Foreground="{Binding StatusColor}"
+                                                       FontStyle="Italic"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- Clock In Column -->
+                            <DataGridTemplateColumn Header="Clock In" Width="90" CanUserSort="True" SortMemberPath="ClockInTime">
+                                <DataGridTemplateColumn.HeaderTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE823;" Style="{StaticResource IconStyle}" FontSize="12"/>
+                                            <TextBlock Text="Clock In" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.HeaderTemplate>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding ClockInTime}" 
+                                                   FontFamily="Consolas"
+                                                   FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- CRASH-PROOF: In Photo Column with Safe Image Display -->
+                            <DataGridTemplateColumn Header="In Photo" Width="90" CanUserSort="True" SortMemberPath="ClockInPhotoExists">
+                                <DataGridTemplateColumn.HeaderTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE114;" Style="{StaticResource IconStyle}" FontSize="12"/>
+                                            <TextBlock Text="In Photo" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.HeaderTemplate>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <!-- Safe Photo Thumbnail Display -->
+                                            <Border Width="50" Height="40" 
+                                                    CornerRadius="6" 
+                                                    Background="#F8F9FA"
+                                                    BorderBrush="#DEE2E6" 
+                                                    BorderThickness="1"
+                                                    Visibility="{Binding ClockInPhotoExists, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <Grid>
+                                                    <!-- CRASH-SAFE Image with proper binding -->
+                                                    <Image Stretch="UniformToFill" 
+                                                           RenderOptions.BitmapScalingMode="HighQuality"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Center"
+                                                           Source="{Binding ClockInPhotoPath, Converter={StaticResource SafeImageSourceConverter}}"
+                                                           Visibility="{Binding ClockInPhotoPath, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                                    
+                                                    <!-- Success Indicator - Made subtle and minimal -->
+                                                    <Border Background="#28A745" 
+                                                            CornerRadius="6"
+                                                            Width="8" Height="8"
+                                                            HorizontalAlignment="Right"
+                                                            VerticalAlignment="Top"
+                                                            Margin="0,2,2,0"
+                                                            Opacity="0.6">
+                                                        <Border.Effect>
+                                                            <DropShadowEffect Color="#40000000" BlurRadius="1" ShadowDepth="0.5" Direction="315"/>
+                                                        </Border.Effect>
+                                                        <!-- Subtle dot indicator instead of bullet point -->
+                                                        <Ellipse Fill="White" 
+                                                               Width="3" Height="3"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                            
+                                            <!-- Status Badge for Missing Photos - Made subtle and minimal -->
+                                            <Border Background="{Binding ClockInPhotoStatusColor}" 
+                                                    CornerRadius="6" 
+                                                    Padding="6,3" 
+                                                    Opacity="0.5"
+                                                    Visibility="{Binding ClockInPhotoExists, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                                <!-- Subtle dot indicator instead of bullet point -->
+                                                <Ellipse Fill="White" 
+                                                       Width="4" Height="4"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- Clock Out Column -->
+                            <DataGridTemplateColumn Header="Clock Out" Width="90" CanUserSort="True" SortMemberPath="ClockOutTime">
+                                <DataGridTemplateColumn.HeaderTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE825;" Style="{StaticResource IconStyle}" FontSize="12"/>
+                                            <TextBlock Text="Clock Out" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.HeaderTemplate>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding ClockOutTime}" 
+                                                   FontFamily="Consolas"
+                                                   FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- CRASH-PROOF: Out Photo Column with Safe Image Display -->
+                            <DataGridTemplateColumn Header="Out Photo" Width="90" CanUserSort="True" SortMemberPath="ClockOutPhotoExists">
+                                <DataGridTemplateColumn.HeaderTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE114;" Style="{StaticResource IconStyle}" FontSize="12"/>
+                                            <TextBlock Text="Out Photo" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.HeaderTemplate>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <!-- Safe Photo Thumbnail Display -->
+                                            <Border Width="50" Height="40" 
+                                                    CornerRadius="6" 
+                                                    Background="#F8F9FA"
+                                                    BorderBrush="#DEE2E6" 
+                                                    BorderThickness="1"
+                                                    Visibility="{Binding ClockOutPhotoExists, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <Grid>
+                                                    <!-- CRASH-SAFE Image with proper binding -->
+                                                    <Image Stretch="UniformToFill" 
+                                                           RenderOptions.BitmapScalingMode="HighQuality"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Center"
+                                                           Source="{Binding ClockOutPhotoPath, Converter={StaticResource SafeImageSourceConverter}}"
+                                                           Visibility="{Binding ClockOutPhotoPath, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                                    
+                                                    <!-- Success Indicator - Made subtle and minimal -->
+                                                    <Border Background="#28A745" 
+                                                            CornerRadius="6"
+                                                            Width="8" Height="8"
+                                                            HorizontalAlignment="Right"
+                                                            VerticalAlignment="Top"
+                                                            Margin="0,2,2,0"
+                                                            Opacity="0.6">
+                                                        <Border.Effect>
+                                                            <DropShadowEffect Color="#40000000" BlurRadius="1" ShadowDepth="0.5" Direction="315"/>
+                                                        </Border.Effect>
+                                                        <!-- Subtle dot indicator instead of bullet point -->
+                                                        <Ellipse Fill="White" 
+                                                               Width="3" Height="3"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                            
+                                            <!-- Status Badge for Missing Photos - Made subtle and minimal -->
+                                            <Border Background="{Binding ClockOutPhotoStatusColor}" 
+                                                    CornerRadius="6" 
+                                                    Padding="6,3" 
+                                                    Opacity="0.5"
+                                                    Visibility="{Binding ClockOutPhotoExists, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                                <!-- Subtle dot indicator instead of bullet point -->
+                                                <Ellipse Fill="White" 
+                                                       Width="4" Height="4"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- Worked Hours Column -->
+                            <DataGridTemplateColumn Header="Worked Hours" Width="110" CanUserSort="True" SortMemberPath="WorkedHoursToday">
+                                <DataGridTemplateColumn.HeaderTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE823;" Style="{StaticResource IconStyle}" FontSize="12"/>
+                                            <TextBlock Text="Worked Hours" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.HeaderTemplate>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding WorkedHoursToday}" 
+                                                   FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   FontFamily="Consolas"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#007BFF"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                        
+                        <!-- Professional Column Header Styling -->
+                        <DataGrid.ColumnHeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#F8F9FA"/>
+                                <Setter Property="Foreground" Value="#495057"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                <Setter Property="FontSize" Value="12"/>
+                                <Setter Property="Padding" Value="12,10"/>
+                                <Setter Property="BorderBrush" Value="#DEE2E6"/>
+                                <Setter Property="BorderThickness" Value="0,0,1,2"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                <Setter Property="Cursor" Value="Hand"/>
+                                <Setter Property="Height" Value="45"/>
+                            </Style>
+                        </DataGrid.ColumnHeaderStyle>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <!-- RIGHT SIDEBAR: Quick Actions & System Status -->
+            <Border Grid.Column="2" 
+                    Background="#E9ECEF" 
+                    CornerRadius="8" 
+                    Padding="15">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        
+                        <!-- Quick Actions -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="&#xE7A4;" Style="{StaticResource IconStyle}" FontWeight="Bold"/>
+                            <TextBlock Text="Quick Actions" FontSize="16" FontWeight="Bold" Foreground="#212529" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        
+                        <Button Command="{Binding ExportDataCommand}"
+                                Style="{StaticResource QuickActionButtonStyle}" 
+                                Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE74E;" Style="{StaticResource IconStyle}"/>
+                                <TextBlock Text="Export Data" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding TestCameraCommand}"
+                                Style="{StaticResource QuickActionButtonStyle}" 
+                                Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE114;" Style="{StaticResource IconStyle}"/>
+                                <TextBlock Text="Test Camera" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding ClearTestDataCommand}"
+                                Style="{StaticResource QuickActionButtonStyle}" 
+                                Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE74D;" Style="{StaticResource IconStyle}"/>
+                                <TextBlock Text="Clear Test Data" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- DUAL TIME CORRECTION: Manager correction functionality -->
+                        <Button Command="{Binding OpenDualTimeCorrectionCommand}"
+                                CommandParameter="{Binding SelectedEmployeeStatus}"
+                                Height="50"
+                                Width="200"
+                                Margin="10,5"
+                                FontSize="11"
+                                FontWeight="Bold"
+                                BorderThickness="0"
+                                Cursor="Hand"
+                                ToolTip="Select an employee from the list to correct both clock-in and clock-out times"
+                                ToolTipService.ShowOnDisabled="True">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#FF6B35"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter Property="Background" Value="#FFE0CC"/>
+                                            <Setter Property="Foreground" Value="#B8824D"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE823;" FontFamily="Segoe UI Symbol" FontSize="14" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Dual Time Correction" VerticalAlignment="Center" FontSize="11" FontWeight="Bold"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- System Status -->
+                        <StackPanel Orientation="Horizontal" Margin="0,10,0,10">
+                            <TextBlock Text="&#xE7F7;" Style="{StaticResource IconStyle}" FontWeight="Bold"/>
+                            <TextBlock Text="System Status" FontSize="16" FontWeight="Bold" Foreground="#212529" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        
+                        <Border Style="{StaticResource StatusCardStyle}" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="Database" FontSize="12" Foreground="Gray"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding DatabaseStatusIcon}" FontFamily="Segoe UI Symbol" FontSize="14" Margin="0,0,5,0"/>
+                                    <TextBlock Text="{Binding DatabaseStatus}" FontSize="12" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource StatusCardStyle}" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="Camera" FontSize="12" Foreground="Gray"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding CameraStatusIcon}" FontFamily="Segoe UI Symbol" FontSize="14" Margin="0,0,5,0"/>
+                                    <TextBlock Text="{Binding CameraStatus}" FontSize="12" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Performance Metrics -->
+                        <StackPanel Orientation="Horizontal" Margin="0,15,0,10">
+                            <TextBlock Text="&#xE7F4;" Style="{StaticResource IconStyle}" FontWeight="Bold"/>
+                            <TextBlock Text="Performance" FontSize="16" FontWeight="Bold" Foreground="#212529" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        
+                        <Border Style="{StaticResource StatusCardStyle}" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="Response Time" FontSize="12" Foreground="Gray"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE7F7;" Style="{StaticResource IconStyle}" FontSize="14"/>
+                                    <TextBlock Text="{Binding ResponseTime}" FontSize="14" FontWeight="SemiBold" Foreground="#28A745"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource StatusCardStyle}" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="Memory Usage" FontSize="12" Foreground="Gray"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE7FB;" Style="{StaticResource IconStyle}" FontSize="14"/>
+                                    <TextBlock Text="{Binding MemoryUsage}" FontSize="14" FontWeight="SemiBold" Foreground="#17A2B8"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+        </Grid>
+
+        <!-- FOOTER SECTION -->
+        <Border Grid.Row="2" 
+                Background="#343A40" 
+                BorderBrush="#007BFF" 
+                BorderThickness="0,2,0,0">
+            <Grid Margin="20,5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left: System Information -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="&#xE7F7;" FontFamily="Segoe UI Symbol" FontSize="14" Foreground="#007BFF" Margin="0,0,5,0"/>
+                    <TextBlock Text="{Binding TabletId}" FontSize="12" Foreground="White" Margin="0,0,15,0"/>
+                    <TextBlock Text="&#xE81D;" FontFamily="Segoe UI Symbol" FontSize="14" Foreground="#007BFF" Margin="0,0,5,0"/>
+                    <TextBlock Text="{Binding TabletLocation}" FontSize="12" Foreground="White"/>
+                </StackPanel>
+
+                <!-- Center: Current Operation -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding CurrentOperationIcon}" FontFamily="Segoe UI Symbol" FontSize="14" Margin="0,0,5,0"/>
+                    <TextBlock Text="{Binding CurrentOperation}" FontSize="12" Foreground="White" Margin="0,0,15,0"/>
+                    <TextBlock Text="{Binding PerformanceStatus}" FontSize="12" Foreground="#28A745"/>
+                </StackPanel>
+
+                <!-- Right: Support Actions -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Command="{Binding SupportCommand}"
+                            Style="{StaticResource QuickActionButtonStyle}" 
+                            FontSize="10"
+                            Height="30"
+                            Margin="0,0,5,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8C8;" FontFamily="Segoe UI Symbol" FontSize="10" Margin="0,0,3,0"/>
+                            <TextBlock Text="Support" FontSize="10" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding HelpCommand}"
+                            Style="{StaticResource QuickActionButtonStyle}" 
+                            FontSize="10"
+                            Height="30"
+                            Margin="0,0,5,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE897;" FontFamily="Segoe UI Symbol" FontSize="10" Margin="0,0,3,0"/>
+                            <TextBlock Text="Help" FontSize="10" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding MaintenanceModeCommand}"
+                            Style="{StaticResource QuickActionButtonStyle}" 
+                            FontSize="10"
+                            Height="30">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE7F8;" FontFamily="Segoe UI Symbol" FontSize="10" Margin="0,0,3,0"/>
+                            <TextBlock Text="Maintenance" FontSize="10" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Loading Overlay -->
+        <Border Grid.RowSpan="3" 
+                Background="#80000000" 
+                Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="Loading admin data..." 
+                          FontSize="24" 
+                          FontWeight="Bold" 
+                          Foreground="White"
+                          HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+    </Grid>
+</Window>

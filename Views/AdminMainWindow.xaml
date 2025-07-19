@@ -1,0 +1,779 @@
+<Window x:Class="EmployeeTimeTrackerTablet.Views.AdminMainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Employee Time Tracker - Administration" 
+        Height="900" Width="1400"
+        WindowState="Maximized"
+        WindowStyle="None"
+        Background="{StaticResource AdminBackgroundBrush}"
+        FontFamily="Segoe UI">
+
+    <Window.Resources>
+        <!-- Additional Admin-Specific Brushes (extending global palette) -->
+        <SolidColorBrush x:Key="SuccessBrush" Color="#28A745"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="#FFC107"/>
+        <SolidColorBrush x:Key="ErrorBrush" Color="#DC3545"/>
+        <SolidColorBrush x:Key="InfoBrush" Color="#17A2B8"/>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="80"/>   <!-- Header -->
+            <RowDefinition Height="*"/>    <!-- Content -->
+            <RowDefinition Height="40"/>   <!-- Footer -->
+        </Grid.RowDefinitions>
+
+        <!-- HEADER SECTION -->
+        <Border Grid.Row="0" Background="{StaticResource AdminHeaderBrush}">
+            <Grid Margin="16,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left: Branding & Navigation -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource AdminButtonStyle}" 
+                            Padding="20,12" 
+                            FontSize="14"
+                            Command="{Binding BackToMainCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,8,0"/>
+                            <TextBlock Text="Back to Main"/>
+                        </StackPanel>
+                    </Button>
+                    <TextBlock Text="Admin Panel" 
+                               Foreground="{StaticResource AdminLightTextColor}" 
+                               FontSize="18" 
+                               FontWeight="Bold" 
+                               VerticalAlignment="Center" 
+                               Margin="16,0,0,0"/>
+                </StackPanel>
+
+                <!-- Center: System Status -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Border Background="White" CornerRadius="20" Padding="12,6" Margin="8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,6,0"/>
+                            <TextBlock Text="{Binding ClockedInCount}" FontWeight="Bold" Margin="0,0,4,0"/>
+                            <TextBlock Text="clocked in" FontSize="11"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Background="White" CornerRadius="20" Padding="12,6" Margin="8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,6,0"/>
+                            <TextBlock Text="{Binding TodayEntries}" FontWeight="Bold" Margin="0,0,4,0"/>
+                            <TextBlock Text="entries today" FontSize="11"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Background="{Binding SystemHealthColor}" CornerRadius="20" Padding="12,6" Margin="8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding SystemHealthIcon}" FontFamily="Segoe UI Emoji" Margin="0,0,6,0"/>
+                            <TextBlock Text="System" Foreground="White" FontWeight="Bold"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Right: Admin Actions -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Style="{StaticResource AdminButtonStyle}" 
+                            Command="{Binding RefreshDataCommand}"
+                            ToolTip="Refresh All Data">
+                        <TextBlock Text="??" FontFamily="Segoe UI Emoji"/>
+                    </Button>
+                    <Button Style="{StaticResource AdminButtonStyle}" 
+                            Command="{Binding SettingsCommand}"
+                            ToolTip="System Settings">
+                        <TextBlock Text="??" FontFamily="Segoe UI Emoji"/>
+                    </Button>
+                    <Button Style="{StaticResource AdminButtonStyle}" 
+                            Command="{Binding LogoutCommand}"
+                            Background="{StaticResource ErrorBrush}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,6,0"/>
+                            <TextBlock Text="Logout"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- MAIN CONTENT AREA -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300"/>  <!-- Left Sidebar -->
+                <ColumnDefinition Width="*"/>    <!-- Center Content -->
+                <ColumnDefinition Width="250"/>  <!-- Right Sidebar -->
+            </Grid.ColumnDefinitions>
+
+            <!-- LEFT SIDEBAR - Navigation & Stats -->
+            <Border Grid.Column="0" Background="{StaticResource AdminSidebarBrush}" Padding="16">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <!-- Today's Summary -->
+                        <Border Style="{StaticResource StatusCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="TODAY'S SUMMARY" 
+                                          FontWeight="Bold" 
+                                          FontSize="12" 
+                                          Foreground="#6C757D" 
+                                          Margin="0,0,0,12"/>
+                                
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="??" FontFamily="Segoe UI Emoji" Grid.Column="0" Margin="0,0,8,0"/>
+                                    <TextBlock Grid.Column="1">
+                                        <Run Text="Active Employees: "/>
+                                        <Run Text="{Binding ActiveEmployeeCount}" FontWeight="Bold"/>
+                                    </TextBlock>
+                                </Grid>
+
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="?" FontFamily="Segoe UI Emoji" Grid.Column="0" Margin="0,0,8,0"/>
+                                    <TextBlock Grid.Column="1">
+                                        <Run Text="Clocked In: "/>
+                                        <Run Text="{Binding ClockedInCount}" FontWeight="Bold" Foreground="{StaticResource SuccessBrush}"/>
+                                    </TextBlock>
+                                </Grid>
+
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="?" FontFamily="Segoe UI Emoji" Grid.Column="0" Margin="0,0,8,0"/>
+                                    <TextBlock Grid.Column="1">
+                                        <Run Text="Total Hours: "/>
+                                        <Run Text="{Binding TotalHoursToday}" FontWeight="Bold"/>
+                                    </TextBlock>
+                                </Grid>
+
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="??" FontFamily="Segoe UI Emoji" Grid.Column="0" Margin="0,0,8,0"/>
+                                    <TextBlock Grid.Column="1">
+                                        <Run Text="Photos: "/>
+                                        <Run Text="{Binding PhotosCaptured}" FontWeight="Bold"/>
+                                    </TextBlock>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Navigation Menu -->
+                        <Border Style="{StaticResource StatusCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="NAVIGATION" 
+                                          FontWeight="Bold" 
+                                          FontSize="12" 
+                                          Foreground="#6C757D" 
+                                          Margin="0,0,0,12"/>
+
+                                <Button Style="{StaticResource NavigationButtonStyle}" Command="{Binding DashboardCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Dashboard"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource NavigationButtonStyle}" Command="{Binding EmployeeManagementCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Employee Management"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource NavigationButtonStyle}" Command="{Binding TimeReportsCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="?" FontFamily="Segoe UI Emoji" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Time Entry Reports"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource NavigationButtonStyle}" Command="{Binding PhotoManagementCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Photo Management"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource NavigationButtonStyle}" Command="{Binding EmailSetupCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Email Export Setup"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource NavigationButtonStyle}" Command="{Binding SystemConfigCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,8,0"/>
+                                        <TextBlock Text="System Configuration"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource NavigationButtonStyle}" Command="{Binding AuditLogsCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Audit Logs"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource NavigationButtonStyle}" Command="{Binding MaintenanceCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="???" FontFamily="Segoe UI Emoji" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Maintenance Tools"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- System Alerts -->
+                        <Border Style="{StaticResource StatusCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="SYSTEM ALERTS" 
+                                          FontWeight="Bold" 
+                                          FontSize="12" 
+                                          Foreground="#6C757D" 
+                                          Margin="0,0,0,12"/>
+
+                                <ItemsControl ItemsSource="{Binding SystemAlerts}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Icon}" 
+                                                          FontFamily="Segoe UI Emoji" 
+                                                          Grid.Column="0" 
+                                                          Margin="0,0,8,0"/>
+                                                <TextBlock Text="{Binding Message}" 
+                                                          Grid.Column="1" 
+                                                          FontSize="11" 
+                                                          TextWrapping="Wrap"
+                                                          Foreground="{Binding AlertColor}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- CENTER CONTENT AREA -->
+            <Border Grid.Column="1" Background="White" Margin="16">
+                <Grid Margin="24">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Content Header -->
+                    <TextBlock Grid.Row="0" 
+                              Text="Currently Active Employees" 
+                              FontSize="20" 
+                              FontWeight="Bold" 
+                              Foreground="{StaticResource AdminTextColor}"
+                              Margin="0,0,0,16"/>
+
+                    <!-- Employee Status Table -->
+                    <DataGrid Grid.Row="1" 
+                             Style="{StaticResource AdminDataGridStyle}"
+                             ItemsSource="{Binding ActiveEmployees}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Employee Name" 
+                                              Binding="{Binding FullName}" 
+                                              Width="200"
+                                              FontWeight="SemiBold"/>
+                            
+                            <DataGridTemplateColumn Header="Status" Width="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="12" Height="12" 
+                                                   Fill="{Binding StatusColor}" 
+                                                   Margin="0,0,8,0"/>
+                                            <TextBlock Text="{Binding Status}" 
+                                                     FontWeight="SemiBold"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <DataGridTextColumn Header="Clock In" 
+                                              Binding="{Binding ClockInTime}" 
+                                              Width="100"/>
+                            
+                            <DataGridTextColumn Header="Hours Worked" 
+                                              Binding="{Binding HoursWorked}" 
+                                              Width="120"/>
+                            
+                            <DataGridTemplateColumn Header="Photo Status" Width="120">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding PhotoIcon}" 
+                                                     FontFamily="Segoe UI Emoji" 
+                                                     Margin="0,0,6,0"/>
+                                            <TextBlock Text="{Binding PhotoStatus}" 
+                                                     FontSize="11"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <DataGridTemplateColumn Header="Actions" Width="150">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Style="{StaticResource AdminButtonStyle}" 
+                                                   Padding="8,4" 
+                                                   Margin="2,0"
+                                                   FontSize="10"
+                                                   Command="{Binding DataContext.ViewEmployeeCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                   CommandParameter="{Binding}">
+                                                <TextBlock Text="View"/>
+                                            </Button>
+                                            <Button Style="{StaticResource AdminButtonStyle}" 
+                                                   Padding="8,4" 
+                                                   Margin="2,0"
+                                                   FontSize="10"
+                                                   Background="{StaticResource WarningBrush}"
+                                                   Command="{Binding DataContext.EditTimeCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                   CommandParameter="{Binding}">
+                                                <TextBlock Text="Edit"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Recent Activity Feed -->
+                    <Border Grid.Row="2" 
+                           Background="{StaticResource AdminBackgroundBrush}" 
+                           CornerRadius="8" 
+                           Padding="16" 
+                           Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Text="RECENT ACTIVITY" 
+                                      FontWeight="Bold" 
+                                      FontSize="14" 
+                                      Foreground="{StaticResource AdminTextColor}"
+                                      Margin="0,0,0,12"/>
+                            
+                            <ScrollViewer Height="150" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding RecentActivity}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Icon}" 
+                                                          FontFamily="Segoe UI Emoji" 
+                                                          Grid.Column="0" 
+                                                          Margin="0,0,8,0"/>
+                                                <TextBlock Text="{Binding Time}" 
+                                                          Grid.Column="1" 
+                                                          FontWeight="Bold" 
+                                                          Margin="0,0,8,0"
+                                                          FontSize="11"/>
+                                                <TextBlock Text="{Binding Description}" 
+                                                          Grid.Column="2" 
+                                                          FontSize="11"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- RIGHT SIDEBAR - Quick Actions -->
+            <Border Grid.Column="2" Background="{StaticResource AdminSidebarBrush}" Padding="16">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <!-- Quick Actions -->
+                        <Border Style="{StaticResource StatusCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="QUICK ACTIONS" 
+                                          FontWeight="Bold" 
+                                          FontSize="12" 
+                                          Foreground="#6C757D" 
+                                          Margin="0,0,0,12"/>
+
+                                <Button Style="{StaticResource QuickActionButtonStyle}" Command="{Binding ExportDataCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Export Data Now"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource QuickActionButtonStyle}" Command="{Binding RefreshAllCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Refresh All Data"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource QuickActionButtonStyle}" Command="{Binding TestCameraCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Test Camera System"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource QuickActionButtonStyle}" 
+                                       Background="{StaticResource WarningBrush}"
+                                       Command="{Binding ClearTestDataCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="???" FontFamily="Segoe UI Emoji" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Clear Test Data"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource QuickActionButtonStyle}" Command="{Binding GenerateReportCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Generate Report"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource QuickActionButtonStyle}" Command="{Binding SystemDiagnosticsCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,8,0"/>
+                                        <TextBlock Text="System Diagnostics"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- System Health -->
+                        <Border Style="{StaticResource StatusCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="SYSTEM STATUS" 
+                                          FontWeight="Bold" 
+                                          FontSize="12" 
+                                          Foreground="#6C757D" 
+                                          Margin="0,0,0,12"/>
+
+                                <Grid Margin="0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="??" FontFamily="Segoe UI Emoji" Grid.Column="0" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Database:" Grid.Column="1" FontSize="11"/>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                        <Ellipse Width="8" Height="8" Fill="{StaticResource SuccessBrush}" Margin="0,0,4,0"/>
+                                        <TextBlock Text="Connected" FontSize="10" Foreground="{StaticResource SuccessBrush}"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="??" FontFamily="Segoe UI Emoji" Grid.Column="0" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Camera:" Grid.Column="1" FontSize="11"/>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                        <Ellipse Width="8" Height="8" Fill="{Binding CameraStatusColor}" Margin="0,0,4,0"/>
+                                        <TextBlock Text="{Binding CameraStatusText}" FontSize="10" Foreground="{Binding CameraStatusColor}"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="??" FontFamily="Segoe UI Emoji" Grid.Column="0" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Storage:" Grid.Column="1" FontSize="11"/>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                        <Ellipse Width="8" Height="8" Fill="{StaticResource SuccessBrush}" Margin="0,0,4,0"/>
+                                        <TextBlock Text="{Binding StorageStatus}" FontSize="10" Foreground="{StaticResource SuccessBrush}"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="??" FontFamily="Segoe UI Emoji" Grid.Column="0" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Email:" Grid.Column="1" FontSize="11"/>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                        <Ellipse Width="8" Height="8" Fill="{StaticResource SuccessBrush}" Margin="0,0,4,0"/>
+                                        <TextBlock Text="Configured" FontSize="10" Foreground="{StaticResource SuccessBrush}"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="??" FontFamily="Segoe UI Emoji" Grid.Column="0" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Last Sync:" Grid.Column="1" FontSize="11"/>
+                                    <TextBlock Text="{Binding LastSyncTime}" Grid.Column="2" FontSize="10" Foreground="#6C757D"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Performance Metrics -->
+                        <Border Style="{StaticResource StatusCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="TODAY'S PERFORMANCE" 
+                                          FontWeight="Bold" 
+                                          FontSize="12" 
+                                          Foreground="#6C757D" 
+                                          Margin="0,0,0,12"/>
+
+                                <Grid Margin="0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="?" FontFamily="Segoe UI Emoji" Grid.Column="0" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Avg Response:" Grid.Column="1" FontSize="11"/>
+                                    <TextBlock Text="{Binding AvgResponseTime}" Grid.Column="2" FontSize="11" FontWeight="Bold"/>
+                                </Grid>
+
+                                <Grid Margin="0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="??" FontFamily="Segoe UI Emoji" Grid.Column="0" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Photo Success:" Grid.Column="1" FontSize="11"/>
+                                    <TextBlock Text="{Binding PhotoSuccessRate}" Grid.Column="2" FontSize="11" FontWeight="Bold" Foreground="{StaticResource SuccessBrush}"/>
+                                </Grid>
+
+                                <Grid Margin="0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="???" FontFamily="Segoe UI Emoji" Grid.Column="0" Margin="0,0,8,0"/>
+                                    <TextBlock Text="DB Operations:" Grid.Column="1" FontSize="11"/>
+                                    <TextBlock Text="{Binding DbOperations}" Grid.Column="2" FontSize="11" FontWeight="Bold"/>
+                                </Grid>
+
+                                <Grid Margin="0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="?" FontFamily="Segoe UI Emoji" Grid.Column="0" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Error Rate:" Grid.Column="1" FontSize="11"/>
+                                    <TextBlock Text="{Binding ErrorRate}" Grid.Column="2" FontSize="11" FontWeight="Bold" Foreground="{StaticResource SuccessBrush}"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Quick Settings -->
+                        <Border Style="{StaticResource StatusCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="QUICK SETTINGS" 
+                                          FontWeight="Bold" 
+                                          FontSize="12" 
+                                          Foreground="#6C757D" 
+                                          Margin="0,0,0,12"/>
+
+                                <Grid Margin="0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="??" FontFamily="Segoe UI Emoji" Grid.Column="0" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Auto Photo:" Grid.Column="1" FontSize="11" VerticalAlignment="Center"/>
+                                    <CheckBox Grid.Column="2" 
+                                             IsChecked="{Binding AutoPhotoEnabled}" 
+                                             VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <Grid Margin="0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="?" FontFamily="Segoe UI Emoji" Grid.Column="0" Margin="0,0,8,0"/>
+                                    <TextBlock Text="24hr Mode:" Grid.Column="1" FontSize="11" VerticalAlignment="Center"/>
+                                    <CheckBox Grid.Column="2" 
+                                             IsChecked="{Binding TwentyFourHourMode}" 
+                                             VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <Grid Margin="0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="??" FontFamily="Segoe UI Emoji" Grid.Column="0" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Sound Alerts:" Grid.Column="1" FontSize="11" VerticalAlignment="Center"/>
+                                    <CheckBox Grid.Column="2" 
+                                             IsChecked="{Binding SoundAlertsEnabled}" 
+                                             VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <Grid Margin="0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="??" FontFamily="Segoe UI Emoji" Grid.Column="0" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Auto Export:" Grid.Column="1" FontSize="11" VerticalAlignment="Center"/>
+                                    <CheckBox Grid.Column="2" 
+                                             IsChecked="{Binding AutoExportEnabled}" 
+                                             VerticalAlignment="Center"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- System Information -->
+                        <Border Style="{StaticResource StatusCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="SYSTEM INFORMATION" 
+                                          FontWeight="Bold" 
+                                          FontSize="12" 
+                                          Foreground="#6C757D" 
+                                          Margin="0,0,0,12"/>
+
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Tablet ID:" Grid.Column="0" FontSize="10" Foreground="#6C757D"/>
+                                    <TextBlock Text="{Binding TabletId}" Grid.Column="1" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                </Grid>
+
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Location:" Grid.Column="0" FontSize="10" Foreground="#6C757D"/>
+                                    <TextBlock Text="{Binding TabletLocation}" Grid.Column="1" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                </Grid>
+
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Version:" Grid.Column="0" FontSize="10" Foreground="#6C757D"/>
+                                    <TextBlock Text="{Binding AppVersion}" Grid.Column="1" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                </Grid>
+
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Uptime:" Grid.Column="0" FontSize="10" Foreground="#6C757D"/>
+                                    <TextBlock Text="{Binding SystemUptime}" Grid.Column="1" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- FOOTER STATUS BAR -->
+        <Border Grid.Row="2" Background="{StaticResource AdminHeaderBrush}">
+            <Grid Margin="16,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left: System Information -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="???" FontFamily="Segoe UI Emoji" Foreground="{StaticResource AdminLightTextColor}" Margin="0,0,6,0"/>
+                    <TextBlock Text="{Binding TabletId}" Foreground="{StaticResource AdminLightTextColor}" FontSize="11" Margin="0,0,16,0"/>
+                    <TextBlock Text="??" FontFamily="Segoe UI Emoji" Foreground="{StaticResource AdminLightTextColor}" Margin="0,0,6,0"/>
+                    <TextBlock Text="{Binding TabletLocation}" Foreground="{StaticResource AdminLightTextColor}" FontSize="11"/>
+                </StackPanel>
+
+                <!-- Center: Current Operations -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding CurrentOperationIcon}" FontFamily="Segoe UI Emoji" Foreground="{StaticResource AdminLightTextColor}" Margin="0,0,6,0"/>
+                    <TextBlock Text="{Binding CurrentOperation}" Foreground="{StaticResource AdminLightTextColor}" FontSize="11" Margin="0,0,16,0"/>
+                    <TextBlock Text="??" FontFamily="Segoe UI Emoji" Foreground="{StaticResource AdminLightTextColor}" Margin="0,0,6,0"/>
+                    <TextBlock Text="{Binding PerformanceStatus}" Foreground="{StaticResource AdminLightTextColor}" FontSize="11"/>
+                </StackPanel>
+
+                <!-- Right: Support & Maintenance -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Style="{StaticResource AdminButtonStyle}" 
+                           Padding="8,4" 
+                           FontSize="10"
+                           Command="{Binding SupportCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,4,0"/>
+                            <TextBlock Text="Support"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource AdminButtonStyle}" 
+                           Padding="8,4" 
+                           FontSize="10"
+                           Margin="8,4,0,4"
+                           Command="{Binding HelpCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,4,0"/>
+                            <TextBlock Text="Help"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource AdminButtonStyle}" 
+                           Padding="8,4" 
+                           FontSize="10"
+                           Margin="8,4,0,4"
+                           Background="{StaticResource WarningBrush}"
+                           Command="{Binding MaintenanceModeCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="??" FontFamily="Segoe UI Emoji" Margin="0,0,4,0"/>
+                            <TextBlock Text="Maintenance"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

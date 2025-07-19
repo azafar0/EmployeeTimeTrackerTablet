@@ -1,0 +1,239 @@
+<Application x:Class="EmployeeTimeTrackerTablet.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:EmployeeTimeTrackerTablet">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Add any additional resource dictionaries here -->
+            </ResourceDictionary.MergedDictionaries>
+            
+            <!-- Global Converters -->
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+            
+            <!-- Style for handling null values visibility -->
+            <Style x:Key="NullToVisibilityStyle" TargetType="ContentControl">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Global Colors -->
+            <SolidColorBrush x:Key="PrimaryBlueBrush" Color="#0078D4"/>
+            <SolidColorBrush x:Key="SuccessGreenBrush" Color="#107C10"/>
+            <SolidColorBrush x:Key="ErrorRedBrush" Color="#D13438"/>
+            <SolidColorBrush x:Key="BackgroundGrayBrush" Color="#F3F4F6"/>
+            <SolidColorBrush x:Key="TextDarkBrush" Color="#323130"/>
+            <SolidColorBrush x:Key="TextLightBrush" Color="#605E5C"/>
+            <SolidColorBrush x:Key="BorderBrush" Color="#E1DFDD"/>
+            
+            <!-- =================================== -->
+            <!-- ADMIN-SPECIFIC COLOR PALETTE -->
+            <!-- =================================== -->
+            <SolidColorBrush x:Key="AdminPrimaryBrush" Color="#007BFF"/>
+            <SolidColorBrush x:Key="AdminHeaderBrush" Color="#343A40"/>
+            <SolidColorBrush x:Key="AdminSidebarBrush" Color="#E9ECEF"/>
+            <SolidColorBrush x:Key="AdminBackgroundBrush" Color="#F8F9FA"/>
+            <SolidColorBrush x:Key="AdminTextColor" Color="#212529"/>
+            <SolidColorBrush x:Key="AdminLightTextColor" Color="#F8F9FA"/>
+            
+            <!-- Icon Font Styles for Professional Status Messages -->
+            <Style x:Key="StatusIconStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="Segoe UI Symbol"/>
+                <Setter Property="FontSize" Value="16"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
+            </Style>
+            
+            <!-- Success Icon Style -->
+            <Style x:Key="SuccessIconStyle" BasedOn="{StaticResource StatusIconStyle}" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource SuccessGreenBrush}"/>
+                <Setter Property="Text" Value="&#x2713;"/> <!-- Checkmark -->
+            </Style>
+            
+            <!-- Warning Icon Style -->
+            <Style x:Key="WarningIconStyle" BasedOn="{StaticResource StatusIconStyle}" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="#F7630C"/>
+                <Setter Property="Text" Value="&#x26A0;"/> <!-- Warning Triangle -->
+            </Style>
+            
+            <!-- Error Icon Style -->
+            <Style x:Key="ErrorIconStyle" BasedOn="{StaticResource StatusIconStyle}" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource ErrorRedBrush}"/>
+                <Setter Property="Text" Value="&#x2717;"/> <!-- X Mark -->
+            </Style>
+            
+            <!-- Info Icon Style -->
+            <Style x:Key="InfoIconStyle" BasedOn="{StaticResource StatusIconStyle}" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource PrimaryBlueBrush}"/>
+                <Setter Property="Text" Value="&#x2139;"/> <!-- Info Symbol -->
+            </Style>
+            
+            <!-- Camera Icon Style -->
+            <Style x:Key="CameraIconStyle" BasedOn="{StaticResource StatusIconStyle}" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+                <Setter Property="Text" Value="&#xE114;"/> <!-- Camera Symbol from Segoe UI Symbol -->
+            </Style>
+            
+            <!-- Refresh Icon Style -->
+            <Style x:Key="RefreshIconStyle" BasedOn="{StaticResource StatusIconStyle}" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource PrimaryBlueBrush}"/>
+                <Setter Property="Text" Value="&#x21BB;"/> <!-- Refresh Arrow -->
+            </Style>
+            
+            <!-- =================================== -->
+            <!-- ADMIN-SPECIFIC BUTTON STYLES -->
+            <!-- =================================== -->
+            
+            <!-- Base Admin Button Style -->
+            <Style x:Key="AdminButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{StaticResource AdminPrimaryBrush}"/>
+                <Setter Property="Foreground" Value="{StaticResource AdminLightTextColor}"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Padding" Value="16,8"/>
+                <Setter Property="Margin" Value="4"/>
+                <Setter Property="MinHeight" Value="44"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" 
+                                    CornerRadius="4"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}">
+                                <ContentPresenter HorizontalAlignment="Center" 
+                                                VerticalAlignment="Center"
+                                                Margin="{TemplateBinding Padding}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#0056B3"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter Property="Background" Value="#004085"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Background" Value="#6C757D"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Quick Action Button Style -->
+            <Style x:Key="QuickActionButtonStyle" TargetType="Button" BasedOn="{StaticResource AdminButtonStyle}">
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                <Setter Property="Margin" Value="0,4"/>
+                <Setter Property="Padding" Value="12,12"/>
+                <Setter Property="FontSize" Value="11"/>
+            </Style>
+
+            <!-- Navigation Button Style -->
+            <Style x:Key="NavigationButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="#495057"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                <Setter Property="Padding" Value="16,12"/>
+                <Setter Property="Margin" Value="0,2"/>
+                <Setter Property="MinHeight" Value="44"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" 
+                                    CornerRadius="4"
+                                    Margin="8,0">
+                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
+                                                VerticalAlignment="Center"
+                                                Margin="{TemplateBinding Padding}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#DEE2E6"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter Property="Background" Value="#CED4DA"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            
+            <!-- =================================== -->
+            <!-- ADMIN-SPECIFIC CONTROL STYLES -->
+            <!-- =================================== -->
+
+            <!-- Status Card Style for Borders/Grids -->
+            <Style x:Key="StatusCardStyle" TargetType="Border">
+                <Setter Property="Background" Value="White"/>
+                <Setter Property="BorderBrush" Value="LightGray"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="4"/>
+                <Setter Property="Padding" Value="10"/>
+                <Setter Property="Margin" Value="0,8"/>
+                <Setter Property="Effect">
+                    <Setter.Value>
+                        <DropShadowEffect Color="Black" Opacity="0.1" BlurRadius="8" ShadowDepth="2"/>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Admin DataGrid Style -->
+            <Style x:Key="AdminDataGridStyle" TargetType="DataGrid">
+                <Setter Property="Background" Value="White"/>
+                <Setter Property="BorderBrush" Value="#DEE2E6"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="RowHeight" Value="50"/>
+                <Setter Property="RowHeaderWidth" Value="0"/>
+                <Setter Property="HeadersVisibility" Value="Column"/>
+                <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+                <Setter Property="HorizontalGridLinesBrush" Value="#E9ECEF"/>
+                <Setter Property="AutoGenerateColumns" Value="False"/>
+                <Setter Property="CanUserAddRows" Value="False"/>
+                <Setter Property="CanUserDeleteRows" Value="False"/>
+                <Setter Property="IsReadOnly" Value="True"/>
+                <Setter Property="SelectionMode" Value="Single"/>
+                <Setter Property="FontSize" Value="12"/>
+                <!-- Column Header Style -->
+                <Setter Property="ColumnHeaderStyle">
+                    <Setter.Value>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="{StaticResource AdminHeaderBrush}"/>
+                            <Setter Property="Foreground" Value="{StaticResource AdminLightTextColor}"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                            <Setter Property="Padding" Value="12,8"/>
+                            <Setter Property="BorderThickness" Value="0,0,1,0"/>
+                            <Setter Property="BorderBrush" Value="#495057"/>
+                        </Style>
+                    </Setter.Value>
+                </Setter>
+                <!-- Row Style for alternating colors -->
+                <Setter Property="RowStyle">
+                    <Setter.Value>
+                        <Style TargetType="DataGridRow">
+                            <Setter Property="Background" Value="White"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#F8F9FA"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="#E3F2FD"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

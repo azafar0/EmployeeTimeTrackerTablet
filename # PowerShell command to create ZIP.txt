@@ -1,0 +1,54 @@
+# PowerShell command to create ZIP backup
+Compress-Archive -Path . -DestinationPath "EmployeeTimeTrackerTablet_Backup_$(Get-Date -Format 'yyyy-MM-dd_HH-mm-ss').zip" -Force
+
+
+
+https://github.com/azafar0/EmployeeTimeTrackerTablet.git
+
+
+
+
+start from here first time only. 
+You do NOT need to run these commands again:
+git init (only needed once per repo)
+git remote add origin ... (only needed once per repo)
+git branch -M main (only needed if you’re renaming your branch)
+
+
+cd "C:\Users\ottaw\source\repos\EmployeeTimeTrackerTablet"
+
+git init
+
+git add .
+
+git commit -m "Initial commit"
+
+git remote add origin https://github.com/azafar0/EmployeeTimeTrackerTablet.git
+
+git branch -M main
+
+git push -u origin main
+
+****-----------****
+
+cd "C:\Users\ottaw\source\repos\EmployeeTimeTrackerTablet"
+
+git add .
+
+git commit -m "Your description of the changes"
+
+
+git push
+
+That’s it!
+Whenever you update your project files, just repeat steps 3-5.
+
+Optional:
+If you want to check the status of your changes before committing:
+
+
+git status
+
+If you want to see your commit history:
+
+git log
