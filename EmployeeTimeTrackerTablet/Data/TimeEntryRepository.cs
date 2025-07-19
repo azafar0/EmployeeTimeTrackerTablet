@@ -19,7 +19,7 @@ namespace EmployeeTimeTracker.Data
 
         /// <summary>
         /// Gets all time entries for a specific employee in a given week
-        /// FIXED: Now includes photo path columns in SELECT query
+        /// FIXED: Now includes photo path columns and new datetime properties in SELECT query
         /// </summary>
         /// <param name="employeeId">Employee ID</param>
         /// <param name="weekStartDate">Monday of the week (will normalize to Monday if not)</param>
@@ -35,10 +35,11 @@ namespace EmployeeTimeTracker.Data
             using var connection = new SqliteConnection(DatabaseHelper.ConnectionString);
             connection.Open();
 
-            // FIXED: Include photo path columns in SELECT using safe column access
+            // FIXED: Include photo path columns and new datetime properties in SELECT using safe column access
             string sql = @"SELECT EntryID, EmployeeID, ShiftDate, TimeIn, TimeOut, TotalHours, 
                                  GrossPay, Notes, CreatedDate, ModifiedDate,
-                                 ClockInPhotoPath, ClockOutPhotoPath
+                                 ClockInPhotoPath, ClockOutPhotoPath,
+                                 ActualClockInDateTime, ActualClockOutDateTime, IsActive
                           FROM TimeEntries 
                           WHERE EmployeeID = @employeeId 
                             AND ShiftDate >= @startDate 
@@ -68,7 +69,11 @@ namespace EmployeeTimeTracker.Data
                     ModifiedDate = reader.GetDateTime("ModifiedDate"),
                     // FIXED: Now reading photo path columns with safe access
                     ClockInPhotoPath = GetSafeString(reader, "ClockInPhotoPath"),
-                    ClockOutPhotoPath = GetSafeString(reader, "ClockOutPhotoPath")
+                    ClockOutPhotoPath = GetSafeString(reader, "ClockOutPhotoPath"),
+                    // NEW: Reading new datetime properties with safe access
+                    ActualClockInDateTime = GetSafeDateTime(reader, "ActualClockInDateTime"),
+                    ActualClockOutDateTime = GetSafeDateTime(reader, "ActualClockOutDateTime"),
+                    IsActive = GetSafeBool(reader, "IsActive")
                 });
             }
 
@@ -110,17 +115,18 @@ namespace EmployeeTimeTracker.Data
 
         /// <summary>
         /// Gets a specific time entry for an employee on a specific date
-        /// FIXED: Now includes photo path columns in SELECT query
+        /// FIXED: Now includes photo path columns and new datetime properties in SELECT query
         /// </summary>
         public TimeEntry? GetTimeEntryForDate(int employeeId, DateTime shiftDate)
         {
             using var connection = new SqliteConnection(DatabaseHelper.ConnectionString);
             connection.Open();
 
-            // FIXED: Include photo path columns in SELECT using safe column access
+            // FIXED: Include photo path columns and new datetime properties in SELECT using safe column access
             string sql = @"SELECT EntryID, EmployeeID, ShiftDate, TimeIn, TimeOut, TotalHours, 
                                  GrossPay, Notes, CreatedDate, ModifiedDate,
-                                 ClockInPhotoPath, ClockOutPhotoPath
+                                 ClockInPhotoPath, ClockOutPhotoPath,
+                                 ActualClockInDateTime, ActualClockOutDateTime, IsActive
                           FROM TimeEntries 
                           WHERE EmployeeID = @employeeId AND ShiftDate = @shiftDate";
 
@@ -146,7 +152,11 @@ namespace EmployeeTimeTracker.Data
                     ModifiedDate = reader.GetDateTime("ModifiedDate"),
                     // FIXED: Now reading photo path columns with safe access
                     ClockInPhotoPath = GetSafeString(reader, "ClockInPhotoPath"),
-                    ClockOutPhotoPath = GetSafeString(reader, "ClockOutPhotoPath")
+                    ClockOutPhotoPath = GetSafeString(reader, "ClockOutPhotoPath"),
+                    // NEW: Reading new datetime properties with safe access
+                    ActualClockInDateTime = GetSafeDateTime(reader, "ActualClockInDateTime"),
+                    ActualClockOutDateTime = GetSafeDateTime(reader, "ActualClockOutDateTime"),
+                    IsActive = GetSafeBool(reader, "IsActive")
                 };
             }
 
@@ -155,19 +165,22 @@ namespace EmployeeTimeTracker.Data
 
         /// <summary>
         /// Updates an existing time entry
-        /// FIXED: Enhanced debugging and includes photo path columns in UPDATE
+        /// FIXED: Enhanced debugging and includes photo path columns and new datetime properties in UPDATE
         /// </summary>
         private bool UpdateTimeEntry(TimeEntry entry, SqliteConnection connection)
         {
             System.Diagnostics.Debug.WriteLine($"UpdateTimeEntry: Updating entry ID {entry.EntryID}");
             System.Diagnostics.Debug.WriteLine($"UpdateTimeEntry: TimeIn={entry.TimeIn}, TimeOut={entry.TimeOut}, TotalHours={entry.TotalHours}");
+            System.Diagnostics.Debug.WriteLine($"UpdateTimeEntry: ActualClockInDateTime={entry.ActualClockInDateTime}, ActualClockOutDateTime={entry.ActualClockOutDateTime}, IsActive={entry.IsActive}");
             System.Diagnostics.Debug.WriteLine($"UpdateTimeEntry: ClockInPhotoPath={entry.ClockInPhotoPath}, ClockOutPhotoPath={entry.ClockOutPhotoPath}");
             
-            // FIXED: Include photo path columns in UPDATE
+            // FIXED: Include photo path columns and new datetime properties in UPDATE
             string sql = @"UPDATE TimeEntries 
                           SET TimeIn = @timeIn, TimeOut = @timeOut, TotalHours = @totalHours, 
                               GrossPay = @grossPay, Notes = @notes, ModifiedDate = @modifiedDate,
-                              ClockInPhotoPath = @clockInPhotoPath, ClockOutPhotoPath = @clockOutPhotoPath
+                              ClockInPhotoPath = @clockInPhotoPath, ClockOutPhotoPath = @clockOutPhotoPath,
+                              ActualClockInDateTime = @actualClockInDateTime, ActualClockOutDateTime = @actualClockOutDateTime,
+                              IsActive = @isActive
                           WHERE EntryID = @entryId";
 
             using var command = new SqliteCommand(sql, connection);
@@ -181,9 +194,14 @@ namespace EmployeeTimeTracker.Data
             // FIXED: Include photo path parameters
             command.Parameters.AddWithValue("@clockInPhotoPath", entry.ClockInPhotoPath ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("@clockOutPhotoPath", entry.ClockOutPhotoPath ?? (object)DBNull.Value);
+            // NEW: Include new datetime property parameters
+            command.Parameters.AddWithValue("@actualClockInDateTime", entry.ActualClockInDateTime ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("@actualClockOutDateTime", entry.ActualClockOutDateTime ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("@isActive", entry.IsActive);
 
             System.Diagnostics.Debug.WriteLine($"UpdateTimeEntry: Executing SQL with TimeOut parameter = {entry.TimeOut?.ToString() ?? "NULL"}");
             System.Diagnostics.Debug.WriteLine($"UpdateTimeEntry: Photo paths - ClockIn: {entry.ClockInPhotoPath ?? "NULL"}, ClockOut: {entry.ClockOutPhotoPath ?? "NULL"}");
+            System.Diagnostics.Debug.WriteLine($"UpdateTimeEntry: DateTime properties - ActualClockIn: {entry.ActualClockInDateTime?.ToString() ?? "NULL"}, ActualClockOut: {entry.ActualClockOutDateTime?.ToString() ?? "NULL"}");
 
             int rowsAffected = command.ExecuteNonQuery();
             System.Diagnostics.Debug.WriteLine($"UpdateTimeEntry: {rowsAffected} rows affected");
@@ -193,16 +211,18 @@ namespace EmployeeTimeTracker.Data
 
         /// <summary>
         /// Inserts a new time entry
-        /// FIXED: Now includes photo path columns in INSERT
+        /// FIXED: Now includes photo path columns and new datetime properties in INSERT
         /// </summary>
         private bool InsertTimeEntry(TimeEntry entry, SqliteConnection connection)
         {
-            // FIXED: Include photo path columns in INSERT
+            // FIXED: Include photo path columns and new datetime properties in INSERT
             string sql = @"INSERT INTO TimeEntries 
                           (EmployeeID, ShiftDate, TimeIn, TimeOut, TotalHours, GrossPay, Notes, 
-                           ClockInPhotoPath, ClockOutPhotoPath, CreatedDate, ModifiedDate)
+                           ClockInPhotoPath, ClockOutPhotoPath, ActualClockInDateTime, ActualClockOutDateTime, 
+                           IsActive, CreatedDate, ModifiedDate)
                           VALUES (@employeeId, @shiftDate, @timeIn, @timeOut, @totalHours, @grossPay, @notes, 
-                                  @clockInPhotoPath, @clockOutPhotoPath, @createdDate, @modifiedDate)";
+                                  @clockInPhotoPath, @clockOutPhotoPath, @actualClockInDateTime, @actualClockOutDateTime,
+                                  @isActive, @createdDate, @modifiedDate)";
 
             using var command = new SqliteCommand(sql, connection);
             command.Parameters.AddWithValue("@employeeId", entry.EmployeeID);
@@ -215,10 +235,15 @@ namespace EmployeeTimeTracker.Data
             // FIXED: Include photo path parameters
             command.Parameters.AddWithValue("@clockInPhotoPath", entry.ClockInPhotoPath ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("@clockOutPhotoPath", entry.ClockOutPhotoPath ?? (object)DBNull.Value);
+            // NEW: Include new datetime property parameters
+            command.Parameters.AddWithValue("@actualClockInDateTime", entry.ActualClockInDateTime ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("@actualClockOutDateTime", entry.ActualClockOutDateTime ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("@isActive", entry.IsActive);
             command.Parameters.AddWithValue("@createdDate", DateTime.Now);
             command.Parameters.AddWithValue("@modifiedDate", DateTime.Now);
 
             System.Diagnostics.Debug.WriteLine($"InsertTimeEntry: Creating new entry with photo paths - ClockIn: {entry.ClockInPhotoPath ?? "NULL"}, ClockOut: {entry.ClockOutPhotoPath ?? "NULL"}");
+            System.Diagnostics.Debug.WriteLine($"InsertTimeEntry: Creating entry with datetime properties - ActualClockIn: {entry.ActualClockInDateTime?.ToString() ?? "NULL"}, ActualClockOut: {entry.ActualClockOutDateTime?.ToString() ?? "NULL"}, IsActive: {entry.IsActive}");
 
             command.ExecuteNonQuery();
             return true;
@@ -394,7 +419,7 @@ namespace EmployeeTimeTracker.Data
 
         /// <summary>
         /// Gets time entries with employee information for reporting
-        /// FIXED: Now includes photo path columns in SELECT query
+        /// FIXED: Now includes photo path columns and new datetime properties in SELECT query
         /// </summary>
         public List<TimeEntryReportData> GetTimeEntriesForReporting(
             DateTime startDate,
@@ -407,7 +432,7 @@ namespace EmployeeTimeTracker.Data
             using var connection = new SqliteConnection(DatabaseHelper.ConnectionString);
             connection.Open();
 
-            // FIXED: Include photo path columns in SELECT
+            // FIXED: Include photo path columns and new datetime properties in SELECT
             var sql = @"SELECT 
                             te.EntryID,
                             te.ShiftDate,
@@ -420,6 +445,9 @@ namespace EmployeeTimeTracker.Data
                             te.ModifiedDate,
                             te.ClockInPhotoPath,
                             te.ClockOutPhotoPath,
+                            te.ActualClockInDateTime,
+                            te.ActualClockOutDateTime,
+                            te.IsActive,
                             e.EmployeeID,
                             e.FirstName,
                             e.LastName,
@@ -477,6 +505,8 @@ namespace EmployeeTimeTracker.Data
                     // FIXED: Now reading photo path columns with safe access
                     ClockInPhotoPath = GetSafeString(reader, "ClockInPhotoPath"),
                     ClockOutPhotoPath = GetSafeString(reader, "ClockOutPhotoPath")
+                    // Note: TimeEntryReportData doesn't include the new datetime properties yet
+                    // This can be extended in the future if needed for reporting
                 };
 
                 entries.Add(entry);
@@ -896,6 +926,7 @@ namespace EmployeeTimeTracker.Data
         /// <summary>
         /// Asynchronously clocks in an employee by creating a new time entry.
         /// Implements double-punch prevention by checking for existing open time entries.
+        /// FIXED: Now properly sets ActualClockInDateTime and IsActive properties.
         /// </summary>
         /// <param name="employeeId">The ID of the employee clocking in</param>
         /// <returns>Task containing success status and message</returns>
@@ -910,22 +941,27 @@ namespace EmployeeTimeTracker.Data
                     return (false, "Employee is already clocked in");
                 }
 
+                var now = DateTime.Now;
                 var timeEntry = new TimeEntry
                 {
                     EmployeeID = employeeId,
-                    ShiftDate = DateTime.Today,
-                    TimeIn = DateTime.Now.TimeOfDay,
+                    ShiftDate = now.Date,
+                    TimeIn = now.TimeOfDay,
                     TimeOut = null,
+                    ActualClockInDateTime = now, // Set the actual clock-in timestamp
+                    ActualClockOutDateTime = null,
+                    IsActive = true, // Mark the entry as active
                     Notes = "Tablet Clock In",
-                    CreatedDate = DateTime.Now,
-                    ModifiedDate = DateTime.Now
+                    CreatedDate = now,
+                    ModifiedDate = now
                 };
 
                 // Use the existing SaveTimeEntry method to add the new entry
                 var success = SaveTimeEntry(timeEntry);
                 if (success)
                 {
-                    return (true, $"Successfully clocked in at {DateTime.Now:HH:mm}");
+                    System.Diagnostics.Debug.WriteLine($"ClockInAsync: Successfully created active time entry with ActualClockInDateTime={timeEntry.ActualClockInDateTime}");
+                    return (true, $"Successfully clocked in at {now:HH:mm}");
                 }
                 else
                 {
@@ -943,7 +979,7 @@ namespace EmployeeTimeTracker.Data
         /// <summary>
         /// Asynchronously clocks out an employee by updating their current time entry.
         /// Validates that the employee is currently clocked in and calculates total hours.
-        /// FIXED: Enhanced debugging and improved database update verification.
+        /// FIXED: Enhanced debugging and improved database update verification. Now properly sets ActualClockOutDateTime and updates IsActive.
         /// </summary>
         /// <param name="employeeId">The ID of the employee clocking out</param>
         /// <returns>Task containing success status and message with time summary</returns>
@@ -958,28 +994,36 @@ namespace EmployeeTimeTracker.Data
                 }
 
                 System.Diagnostics.Debug.WriteLine($"ClockOutAsync: Found current entry ID {currentEntry.EntryID} for employee {employeeId}");
-                System.Diagnostics.Debug.WriteLine($"ClockOutAsync: Current TimeIn={currentEntry.TimeIn}, TimeOut={currentEntry.TimeOut}");
+                System.Diagnostics.Debug.WriteLine($"ClockOutAsync: Current TimeIn={currentEntry.TimeIn}, ActualClockInDateTime={currentEntry.ActualClockInDateTime}");
 
-                currentEntry.TimeOut = DateTime.Now.TimeOfDay;
-                System.Diagnostics.Debug.WriteLine($"ClockOutAsync: Setting TimeOut to {currentEntry.TimeOut}");
+                var now = DateTime.Now;
+                currentEntry.TimeOut = now.TimeOfDay;
+                currentEntry.ActualClockOutDateTime = now; // Set the actual clock-out timestamp
+                currentEntry.IsActive = false; // Mark the entry as inactive
                 
-                // Calculate total hours with better precision and minimum time handling
+                System.Diagnostics.Debug.WriteLine($"ClockOutAsync: Setting TimeOut to {currentEntry.TimeOut}, ActualClockOutDateTime to {currentEntry.ActualClockOutDateTime}");
+                
+                // Calculate total hours with better precision and cross-midnight support
                 decimal totalHours = 0;
-                if (currentEntry.TimeIn.HasValue && currentEntry.TimeOut.HasValue)
+                if (currentEntry.ActualClockInDateTime.HasValue && currentEntry.ActualClockOutDateTime.HasValue)
                 {
-                    var timeSpan = currentEntry.TimeOut.Value - currentEntry.TimeIn.Value;
-                    // Handle overnight shifts (if TimeOut is less than TimeIn, add 24 hours)
-                    if (timeSpan < TimeSpan.Zero)
+                    // Use actual DateTime properties for accurate calculation across midnight
+                    var duration = currentEntry.ActualClockOutDateTime.Value - currentEntry.ActualClockInDateTime.Value;
+                    
+                    // The duration should already be positive since ActualClockOutDateTime > ActualClockInDateTime
+                    // But handle any edge cases
+                    if (duration.TotalMinutes < 0)
                     {
-                        timeSpan = timeSpan.Add(TimeSpan.FromDays(1));
+                        System.Diagnostics.Debug.WriteLine($"ClockOutAsync: Warning - negative duration detected: {duration}");
+                        return (false, "Invalid time calculation. Please check clock-in and clock-out times.");
                     }
                     
-                    totalHours = (decimal)timeSpan.TotalHours;
+                    totalHours = (decimal)duration.TotalHours;
                     
                     // For very short periods (less than 6 minutes), show minutes instead
                     if (totalHours < 0.1m) // Less than 6 minutes
                     {
-                        var totalMinutes = (int)timeSpan.TotalMinutes;
+                        var totalMinutes = (int)duration.TotalMinutes;
                         if (totalMinutes < 1)
                         {
                             totalMinutes = 1; // Minimum 1 minute for any clock operation
@@ -989,17 +1033,17 @@ namespace EmployeeTimeTracker.Data
                         System.Diagnostics.Debug.WriteLine($"ClockOutAsync: Short period - {totalMinutes} minutes, setting TotalHours to {currentEntry.TotalHours}");
                         
                         // Save the entry with debugging
-                        currentEntry.ModifiedDate = DateTime.Now;
+                        currentEntry.ModifiedDate = now;
                         var success = SaveTimeEntry(currentEntry);
                         System.Diagnostics.Debug.WriteLine($"ClockOutAsync: SaveTimeEntry result = {success}");
                         
                         if (success)
                         {
                             // VERIFY the update was successful by re-reading from database
-                            var verifyEntry = GetTimeEntryForDate(employeeId, DateTime.Today);
-                            System.Diagnostics.Debug.WriteLine($"ClockOutAsync: Verification - TimeOut={verifyEntry?.TimeOut}, TotalHours={verifyEntry?.TotalHours}");
+                            var verifyEntry = GetTimeEntryForDate(employeeId, currentEntry.ShiftDate);
+                            System.Diagnostics.Debug.WriteLine($"ClockOutAsync: Verification - TimeOut={verifyEntry?.TimeOut}, TotalHours={verifyEntry?.TotalHours}, IsActive={verifyEntry?.IsActive}");
                             
-                            var clockOutTime = DateTime.Now.ToString("HH:mm");
+                            var clockOutTime = now.ToString("HH:mm");
                             return (true, $"Successfully clocked out at {clockOutTime}. Worked {totalMinutes} minute{(totalMinutes == 1 ? "" : "s")} today.");
                         }
                         else
@@ -1009,10 +1053,27 @@ namespace EmployeeTimeTracker.Data
                     }
                     
                     currentEntry.TotalHours = totalHours;
-                    System.Diagnostics.Debug.WriteLine($"ClockOutAsync: Normal period - setting TotalHours to {currentEntry.TotalHours}");
+                    System.Diagnostics.Debug.WriteLine($"ClockOutAsync: Normal period - setting TotalHours to {currentEntry.TotalHours} using ActualDateTime calculation");
+                }
+                else
+                {
+                    // Fallback to TimeSpan calculation if ActualDateTime properties are not available
+                    if (currentEntry.TimeIn.HasValue && currentEntry.TimeOut.HasValue)
+                    {
+                        var timeSpan = currentEntry.TimeOut.Value - currentEntry.TimeIn.Value;
+                        // Handle overnight shifts (if TimeOut is less than TimeIn, add 24 hours)
+                        if (timeSpan < TimeSpan.Zero)
+                        {
+                            timeSpan = timeSpan.Add(TimeSpan.FromDays(1));
+                        }
+                        
+                        totalHours = (decimal)timeSpan.TotalHours;
+                        currentEntry.TotalHours = totalHours;
+                        System.Diagnostics.Debug.WriteLine($"ClockOutAsync: Fallback TimeSpan calculation - setting TotalHours to {currentEntry.TotalHours}");
+                    }
                 }
 
-                currentEntry.ModifiedDate = DateTime.Now;
+                currentEntry.ModifiedDate = now;
 
                 // Use the existing SaveTimeEntry method to update the entry
                 var saveSuccess = SaveTimeEntry(currentEntry);
@@ -1021,11 +1082,11 @@ namespace EmployeeTimeTracker.Data
                 if (saveSuccess)
                 {
                     // VERIFY the update was successful by re-reading from database
-                    var verifyEntry = GetTimeEntryForDate(employeeId, DateTime.Today);
-                    System.Diagnostics.Debug.WriteLine($"ClockOutAsync: Verification - TimeOut={verifyEntry?.TimeOut}, TotalHours={verifyEntry?.TotalHours}");
+                    var verifyEntry = GetTimeEntryForDate(employeeId, currentEntry.ShiftDate);
+                    System.Diagnostics.Debug.WriteLine($"ClockOutAsync: Verification - TimeOut={verifyEntry?.TimeOut}, TotalHours={verifyEntry?.TotalHours}, IsActive={verifyEntry?.IsActive}");
                     
                     // Enhanced success message with time summary
-                    var clockOutTime = DateTime.Now.ToString("HH:mm");
+                    var clockOutTime = now.ToString("HH:mm");
                     var hoursWorked = totalHours.ToString("F1");
                     return (true, $"Successfully clocked out at {clockOutTime}. Worked {hoursWorked} hours today.");
                 }
@@ -1077,8 +1138,8 @@ namespace EmployeeTimeTracker.Data
 
         /// <summary>
         /// Asynchronously checks if an employee is currently clocked in.
-        /// Returns true if the employee has an open time entry (TimeOut is null).
-        /// FIXED: More robust checking with enhanced debugging and cache clearing.
+        /// Returns true if the employee has an open time entry (IsActive is true).
+        /// FIXED: More robust checking using IsActive property and enhanced debugging.
         /// </summary>
         /// <param name="employeeId">The ID of the employee</param>
         /// <returns>Task containing true if clocked in, false otherwise</returns>
@@ -1091,43 +1152,40 @@ namespace EmployeeTimeTracker.Data
                     using var connection = new SqliteConnection(DatabaseHelper.ConnectionString);
                     connection.Open();
 
-                    // ENHANCED: Check for any time entry today with TimeIn but no TimeOut
-                    // Also log the actual values to debug the issue
-                    string sql = @"SELECT EntryID, TimeIn, TimeOut, ClockInPhotoPath, ClockOutPhotoPath 
+                    // ENHANCED: Check for any active time entry today using IsActive property
+                    // This provides more reliable checking than just TimeOut being null
+                    string sql = @"SELECT EntryID, TimeIn, TimeOut, IsActive, ActualClockInDateTime, ActualClockOutDateTime 
                                   FROM TimeEntries 
                                   WHERE EmployeeID = @employeeId 
                                     AND ShiftDate = @today 
-                                    AND TimeIn IS NOT NULL";
+                                    AND IsActive = 1";
 
                     using var command = new SqliteCommand(sql, connection);
                     command.Parameters.AddWithValue("@employeeId", employeeId);
                     command.Parameters.AddWithValue("@today", DateTime.Today.ToString("yyyy-MM-dd"));
 
                     using var reader = command.ExecuteReader();
-                    bool hasOpenEntry = false;
-                    int totalEntries = 0;
+                    bool hasActiveEntry = false;
+                    int totalActiveEntries = 0;
                     
                     while (reader.Read())
                     {
-                        totalEntries++;
+                        totalActiveEntries++;
                         var entryId = reader.GetInt32("EntryID");
                         var timeIn = reader.IsDBNull("TimeIn") ? "NULL" : reader.GetString("TimeIn");
                         var timeOut = reader.IsDBNull("TimeOut") ? "NULL" : reader.GetString("TimeOut");
-                        var clockInPhoto = GetSafeString(reader, "ClockInPhotoPath");
-                        var clockOutPhoto = GetSafeString(reader, "ClockOutPhotoPath");
+                        var isActive = GetSafeBool(reader, "IsActive");
+                        var actualClockIn = GetSafeDateTime(reader, "ActualClockInDateTime");
+                        var actualClockOut = GetSafeDateTime(reader, "ActualClockOutDateTime");
                         
-                        System.Diagnostics.Debug.WriteLine($"Entry {entryId}: TimeIn={timeIn}, TimeOut={timeOut}");
-                        System.Diagnostics.Debug.WriteLine($"Entry {entryId}: ClockInPhoto={clockInPhoto ?? "NULL"}, ClockOutPhoto={clockOutPhoto ?? "NULL"}");
+                        System.Diagnostics.Debug.WriteLine($"Active Entry {entryId}: TimeIn={timeIn}, TimeOut={timeOut}, IsActive={isActive}");
+                        System.Diagnostics.Debug.WriteLine($"Active Entry {entryId}: ActualClockIn={actualClockIn?.ToString() ?? "NULL"}, ActualClockOut={actualClockOut?.ToString() ?? "NULL"}");
                         
-                        // Entry is open if TimeOut is NULL
-                        if (reader.IsDBNull("TimeOut"))
-                        {
-                            hasOpenEntry = true;
-                        }
+                        hasActiveEntry = true; // If we find any entry with IsActive=1, employee is clocked in
                     }
                     
-                    System.Diagnostics.Debug.WriteLine($"IsEmployeeClockedInAsync for ID {employeeId}: {hasOpenEntry} (total entries today: {totalEntries})");
-                    return hasOpenEntry;
+                    System.Diagnostics.Debug.WriteLine($"IsEmployeeClockedInAsync for ID {employeeId}: {hasActiveEntry} (total active entries today: {totalActiveEntries})");
+                    return hasActiveEntry;
                 });
             }
             catch (Exception ex)
@@ -1223,7 +1281,8 @@ namespace EmployeeTimeTracker.Data
                     // Get the most recent completed time entry (has both TimeIn and TimeOut)
                     string sql = @"SELECT EntryID, EmployeeID, ShiftDate, TimeIn, TimeOut, TotalHours, 
                                          GrossPay, Notes, CreatedDate, ModifiedDate,
-                                         ClockInPhotoPath, ClockOutPhotoPath
+                                         ClockInPhotoPath, ClockOutPhotoPath,
+                                         ActualClockInDateTime, ActualClockOutDateTime, IsActive
                                   FROM TimeEntries 
                                   WHERE EmployeeID = @employeeId 
                                     AND TimeIn IS NOT NULL 
@@ -1250,7 +1309,11 @@ namespace EmployeeTimeTracker.Data
                             CreatedDate = reader.GetDateTime("CreatedDate"),
                             ModifiedDate = reader.GetDateTime("ModifiedDate"),
                             ClockInPhotoPath = GetSafeString(reader, "ClockInPhotoPath"),
-                            ClockOutPhotoPath = GetSafeString(reader, "ClockOutPhotoPath")
+                            ClockOutPhotoPath = GetSafeString(reader, "ClockOutPhotoPath"),
+                            // NEW: Reading new datetime properties with safe access
+                            ActualClockInDateTime = GetSafeDateTime(reader, "ActualClockInDateTime"),
+                            ActualClockOutDateTime = GetSafeDateTime(reader, "ActualClockOutDateTime"),
+                            IsActive = GetSafeBool(reader, "IsActive")
                         };
                     }
 
@@ -1282,6 +1345,48 @@ namespace EmployeeTimeTracker.Data
             {
                 // Column doesn't exist - return null for backward compatibility
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Safely retrieves a DateTime value from SqliteDataReader, handling missing columns.
+        /// Used for backward compatibility when new columns might not exist yet.
+        /// </summary>
+        /// <param name="reader">SqliteDataReader instance</param>
+        /// <param name="columnName">Name of the column to retrieve</param>
+        /// <returns>DateTime value or null if column doesn't exist or is null</returns>
+        private static DateTime? GetSafeDateTime(SqliteDataReader reader, string columnName)
+        {
+            try
+            {
+                var ordinal = reader.GetOrdinal(columnName);
+                return reader.IsDBNull(ordinal) ? null : reader.GetDateTime(ordinal);
+            }
+            catch (IndexOutOfRangeException)
+            {
+                // Column doesn't exist - return null for backward compatibility
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Safely retrieves a boolean value from SqliteDataReader, handling missing columns.
+        /// Used for backward compatibility when new columns might not exist yet.
+        /// </summary>
+        /// <param name="reader">SqliteDataReader instance</param>
+        /// <param name="columnName">Name of the column to retrieve</param>
+        /// <returns>Boolean value or false if column doesn't exist or is null</returns>
+        private static bool GetSafeBool(SqliteDataReader reader, string columnName)
+        {
+            try
+            {
+                var ordinal = reader.GetOrdinal(columnName);
+                return reader.IsDBNull(ordinal) ? false : reader.GetBoolean(ordinal);
+            }
+            catch (IndexOutOfRangeException)
+            {
+                // Column doesn't exist - return false for backward compatibility
+                return false;
             }
         }
     }

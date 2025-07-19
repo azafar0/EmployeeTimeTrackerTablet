@@ -33,7 +33,7 @@ namespace EmployeeTimeTracker.Data
             {
                 // Fresh database - create all tables
                 CreateAllTables(connection);
-                SetDatabaseVersion(connection, 3); // Version 3 includes photo path columns
+                SetDatabaseVersion(connection, 4); // Version 4 includes new datetime properties
             }
             else if (currentVersion == 1)
             {
@@ -41,13 +41,23 @@ namespace EmployeeTimeTracker.Data
                 MigrateDatabaseToVersion2(connection);
                 // Continue to version 3
                 MigrateDatabaseToVersion3(connection);
-                SetDatabaseVersion(connection, 3);
+                // Continue to version 4
+                MigrateDatabaseToVersion4(connection);
+                SetDatabaseVersion(connection, 4);
             }
             else if (currentVersion == 2)
             {
                 // Migrate from version 2 to 3 (add photo path columns)
                 MigrateDatabaseToVersion3(connection);
-                SetDatabaseVersion(connection, 3);
+                // Continue to version 4
+                MigrateDatabaseToVersion4(connection);
+                SetDatabaseVersion(connection, 4);
+            }
+            else if (currentVersion == 3)
+            {
+                // Migrate from version 3 to 4 (add new datetime properties)
+                MigrateDatabaseToVersion4(connection);
+                SetDatabaseVersion(connection, 4);
             }
             
             // Create default admin user if no users exist
@@ -72,7 +82,7 @@ namespace EmployeeTimeTracker.Data
                     CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP
                 )";
 
-            // Create TimeEntries table WITH PHOTO PATH COLUMNS
+            // Create TimeEntries table WITH PHOTO PATH COLUMNS AND NEW DATETIME PROPERTIES
             string createTimeEntriesTable = @"
                 CREATE TABLE IF NOT EXISTS TimeEntries (
                     EntryID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,6 +90,9 @@ namespace EmployeeTimeTracker.Data
                     ShiftDate DATE NOT NULL,
                     TimeIn TIME,
                     TimeOut TIME,
+                    ActualClockInDateTime DATETIME,
+                    ActualClockOutDateTime DATETIME,
+                    IsActive BOOLEAN DEFAULT 0,
                     TotalHours DECIMAL(4,2),
                     GrossPay DECIMAL(10,2),
                     Notes TEXT,
@@ -300,6 +313,62 @@ namespace EmployeeTimeTracker.Data
             }
         }
 
+        private static void MigrateDatabaseToVersion4(SqliteConnection connection)
+        {
+            using var transaction = connection.BeginTransaction();
+
+            try
+            {
+                var command = connection.CreateCommand();
+                command.Transaction = transaction;
+
+                // Add new DateTime properties to TimeEntries table
+                try
+                {
+                    command.CommandText = "ALTER TABLE TimeEntries ADD COLUMN ActualClockInDateTime DATETIME";
+                    command.ExecuteNonQuery();
+                    Console.WriteLine("Added ActualClockInDateTime column to TimeEntries table");
+                }
+                catch (Exception ex)
+                {
+                    // Column might already exist
+                    Console.WriteLine($"ActualClockInDateTime column may already exist: {ex.Message}");
+                }
+
+                try
+                {
+                    command.CommandText = "ALTER TABLE TimeEntries ADD COLUMN ActualClockOutDateTime DATETIME";
+                    command.ExecuteNonQuery();
+                    Console.WriteLine("Added ActualClockOutDateTime column to TimeEntries table");
+                }
+                catch (Exception ex)
+                {
+                    // Column might already exist
+                    Console.WriteLine($"ActualClockOutDateTime column may already exist: {ex.Message}");
+                }
+
+                try
+                {
+                    command.CommandText = "ALTER TABLE TimeEntries ADD COLUMN IsActive BOOLEAN DEFAULT 0";
+                    command.ExecuteNonQuery();
+                    Console.WriteLine("Added IsActive column to TimeEntries table");
+                }
+                catch (Exception ex)
+                {
+                    // Column might already exist
+                    Console.WriteLine($"IsActive column may already exist: {ex.Message}");
+                }
+
+                transaction.Commit();
+                Console.WriteLine("Database migration to version 4 (cross-midnight support) completed successfully");
+            }
+            catch (Exception ex)
+            {
+                transaction.Rollback();
+                throw new Exception($"Database migration to version 4 failed: {ex.Message}", ex);
+            }
+        }
+
         private static bool NeedsEmployeeMigration(SqliteConnection connection)
         {
             try
@@ -495,7 +564,7 @@ namespace EmployeeTimeTracker.Data
                     )";
                 createCommand.ExecuteNonQuery();
 
-                // Insert or update version
+                // Insert or replace version
                 using var command = connection.CreateCommand();
                 command.CommandText = "INSERT OR REPLACE INTO DatabaseVersion (Version) VALUES (@Version)";
                 command.Parameters.AddWithValue("@Version", version);
