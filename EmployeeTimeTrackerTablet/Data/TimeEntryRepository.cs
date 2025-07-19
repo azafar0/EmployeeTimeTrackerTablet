@@ -1328,6 +1328,67 @@ namespace EmployeeTimeTracker.Data
         }
 
         /// <summary>
+        /// Gets the currently active time entry for an employee, regardless of shift date.
+        /// Cross-midnight aware - finds active entries even if they started yesterday.
+        /// Uses IsActive flag for reliable detection instead of TimeOut IS NULL.
+        /// </summary>
+        /// <param name="employeeId">The employee ID to check</param>
+        /// <returns>The active TimeEntry if found, null otherwise</returns>
+        public async Task<TimeEntry?> GetActiveTimeEntryAsync(int employeeId)
+        {
+            try
+            {
+                return await Task.Run(() =>
+                {
+                    using var connection = new SqliteConnection(DatabaseHelper.ConnectionString);
+                    connection.Open();
+                    string sql = @"SELECT EntryID, EmployeeID, ShiftDate, TimeIn, TimeOut, TotalHours,
+                                          GrossPay, Notes, CreatedDate, ModifiedDate,
+                                          ClockInPhotoPath, ClockOutPhotoPath,
+                                          ActualClockInDateTime, ActualClockOutDateTime, IsActive
+                                  FROM TimeEntries
+                                   WHERE EmployeeID = @employeeId
+                                     AND IsActive = 1
+                                   ORDER BY ActualClockInDateTime DESC
+                                   LIMIT 1";
+                    using var command = new SqliteCommand(sql, connection);
+                    command.Parameters.AddWithValue("@employeeId", employeeId);
+                    using var reader = command.ExecuteReader();
+                    if (reader.Read())
+                    {
+                        var entry = new TimeEntry
+                        {
+                            EntryID = reader.GetInt32("EntryID"),
+                            EmployeeID = reader.GetInt32("EmployeeID"),
+                            ShiftDate = reader.GetDateTime("ShiftDate"),
+                            TimeIn = reader.IsDBNull("TimeIn") ? null : TimeSpan.Parse(reader.GetString("TimeIn")),
+                            TimeOut = reader.IsDBNull("TimeOut") ? null : TimeSpan.Parse(reader.GetString("TimeOut")),
+                            TotalHours = reader.IsDBNull("TotalHours") ? 0 : reader.GetDecimal("TotalHours"),
+                            GrossPay = reader.IsDBNull("GrossPay") ? 0 : reader.GetDecimal("GrossPay"),
+                            Notes = reader.IsDBNull("Notes") ? "" : reader.GetString("Notes"),
+                            CreatedDate = reader.GetDateTime("CreatedDate"),
+                            ModifiedDate = reader.GetDateTime("ModifiedDate"),
+                            ClockInPhotoPath = GetSafeString(reader, "ClockInPhotoPath"),
+                            ClockOutPhotoPath = GetSafeString(reader, "ClockOutPhotoPath"),
+                            ActualClockInDateTime = GetSafeDateTime(reader, "ActualClockInDateTime"),
+                            ActualClockOutDateTime = GetSafeDateTime(reader, "ActualClockOutDateTime"),
+                            IsActive = GetSafeBool(reader, "IsActive")
+                        };
+                        System.Diagnostics.Debug.WriteLine($"GetActiveTimeEntryAsync: Found active entry for employee {employeeId}, EntryID {entry.EntryID}, Started: {entry.ActualClockInDateTime}");
+                        return entry;
+                    }
+                    System.Diagnostics.Debug.WriteLine($"GetActiveTimeEntryAsync: No active entry found for employee {employeeId}");
+                    return null;
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in GetActiveTimeEntryAsync for employee {employeeId}: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Safely retrieves a string value from SqliteDataReader, handling missing columns.
         /// Used for backward compatibility when new columns might not exist yet.
         /// </summary>
@@ -1376,7 +1437,7 @@ namespace EmployeeTimeTracker.Data
         /// <param name="reader">SqliteDataReader instance</param>
         /// <param name="columnName">Name of the column to retrieve</param>
         /// <returns>Boolean value or false if column doesn't exist or is null</returns>
-        private static bool GetSafeBool(SqliteDataReader reader, string columnName)
+        private static bool GetSafeBool(SqliteDataReader reader, String columnName)
         {
             try
             {
@@ -1387,6 +1448,77 @@ namespace EmployeeTimeTracker.Data
             {
                 // Column doesn't exist - return false for backward compatibility
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Asynchronously gets the current shift status for an employee with cross-midnight support.
+        /// This method leverages the EmployeeShiftStatus model to provide comprehensive shift information.
+        /// NEWLY IMPLEMENTED: Core method for cross-midnight shift support using the EmployeeShiftStatus model.
+        /// </summary>
+        /// <param name="employeeId">The ID of the employee</param>
+        /// <returns>Task containing EmployeeShiftStatus with comprehensive shift information</returns>
+        public async Task<EmployeeShiftStatus> GetEmployeeShiftStatusAsync(int employeeId)
+        {
+            try
+            {
+                var status = new EmployeeShiftStatus
+                {
+                    IsWorking = false,
+                    WorkingHours = 0,
+                    TodayCompletedHours = 0,
+                    IsCrossMidnight = false
+                };
+
+                // Check for active entry (cross-midnight aware)
+                var activeEntry = await GetActiveTimeEntryAsync(employeeId);
+
+                if (activeEntry != null && activeEntry.ActualClockInDateTime.HasValue)
+                {
+                    // Employee is currently working
+                    status.IsWorking = true;
+                    status.CurrentShiftDate = activeEntry.ShiftDate;
+                    status.ShiftStarted = activeEntry.ActualClockInDateTime.Value;
+
+                    // Calculate working hours
+                    var workingTime = DateTime.Now - activeEntry.ActualClockInDateTime.Value;
+                    status.WorkingHours = Math.Max(0, workingTime.TotalHours);
+
+                    // Determine if cross-midnight
+                    status.IsCrossMidnight = activeEntry.ActualClockInDateTime.Value.Date < DateTime.Today;
+
+                    System.Diagnostics.Debug.WriteLine($"GetEmployeeShiftStatusAsync: Employee {employeeId} is working since {status.ShiftStarted:yyyy-MM-dd HH:mm}, {status.WorkingHours:F1}h, CrossMidnight: {status.IsCrossMidnight}");
+                }
+                else
+                {
+                    // Employee is not currently working - get today's completed hours
+                    var todayEntries = await GetTimeEntriesForDateAsync(employeeId, DateTime.Today);
+                    status.TodayCompletedHours = todayEntries.Where(e => e.TimeOut.HasValue && e.TotalHours > 0)
+                                                           .Sum(e => e.TotalHours);
+
+                    // Get last clock out time
+                    var lastEntry = todayEntries.Where(e => e.ActualClockOutDateTime.HasValue)
+                                               .OrderByDescending(e => e.ActualClockOutDateTime)
+                                               .FirstOrDefault();
+                    status.LastClockOut = lastEntry?.ActualClockOutDateTime;
+
+                    System.Diagnostics.Debug.WriteLine($"GetEmployeeShiftStatusAsync: Employee {employeeId} not working, completed today: {status.TodayCompletedHours:F1}h");
+                }
+
+                return status;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in GetEmployeeShiftStatusAsync for employee {employeeId}: {ex.Message}");
+
+                // Return safe default status on error
+                return new EmployeeShiftStatus
+                {
+                    IsWorking = false,
+                    WorkingHours = 0,
+                    TodayCompletedHours = 0,
+                    IsCrossMidnight = false
+                };
             }
         }
     }
